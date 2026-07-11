@@ -423,8 +423,8 @@ function Dashboard() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflowY: "auto" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 36px" }}>
+      <main style={{ flex: 1, overflowY: "auto", width: "100%" }}>
+        <div style={{ width: "100%", padding: "32px 36px", boxSizing: "border-box" }}>
           {renderContent()}
         </div>
       </main>
