@@ -1,363 +1,306 @@
 import { useState } from "react";
 
-const OKCH = {
-  // Neutrals
-  neutral0: "#FFFFFF",
-  neutral50: "#F7F8F9",
-  neutral100: "#EDEFF1",
-  neutral200: "#DCE0E3",
-  neutral500: "#75808A",
-  neutral600: "#565F68",
-  neutral700: "#3A4148",
-  neutral900: "#1A1F24",
-  // Green
-  greenPrimary: "#3AA25A",
-  greenLight: "#EAF6EE",
-  greenLightBorder: "#D4EEDB",
+// Design tokens
+const TOKENS = {
+  colors: {
+    neutral: {
+      0: "#FFFFFF",
+      50: "#F7F8F9",
+      100: "#EDEFF1",
+      200: "#DCE0E3",
+      300: "#C2C8CC",
+      400: "#9AA2A8",
+      500: "#75808A",
+      600: "#565F68",
+      700: "#3A4148",
+      900: "#1A1F24",
+    },
+    green: {
+      50: "#EAF6EE",
+      100: "#D4EEDB",
+      200: "#AEDFBB",
+      300: "#82CC97",
+      400: "#57B972",
+      500: "#3AA25A",
+      600: "#2E8C4B",
+      700: "#23703C",
+      800: "#1A552D",
+      900: "#123B1F",
+    },
+    semantic: {
+      success: "#3AA25A",
+      warning: "#B8860B",
+      danger: "#DC2626",
+      info: "#2563EB",
+    },
+  },
+  typography: {
+    display: { family: "Manrope, sans-serif", size: "44px", weight: 800 },
+    heading: { family: "Manrope, sans-serif", size: "24px", weight: 700 },
+    body: { family: "Inter, sans-serif", size: "16px", weight: 400 },
+    caption: { family: "Inter, sans-serif", size: "13px", weight: 600 },
+  },
+  spacing: { xs: "8px", sm: "12px", md: "16px", lg: "20px", xl: "32px", "2xl": "36px" },
+  radius: { sm: "8px", md: "14px", lg: "20px", xl: "22px" },
+  shadows: {
+    card: "0 8px 24px -8px rgba(0, 0, 0, 0.25)",
+    dashboard: "0 20px 50px -20px rgba(0, 0, 0, 0.2)",
+  },
+  focus: {
+    outline: "0 0 0 3px rgba(58, 162, 90, 0.25)",
+  },
 };
 
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+// SVG Icons
+const Icons = {
+  Dashboard: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+    </svg>
+  ),
+  Income: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 1v22M17 5H9.5a4.5 4.5 0 0 0 0 9h5m0 0a4.5 4.5 0 0 0 0 9H6" />
+    </svg>
+  ),
+  Expenses: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="1" />
+      <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" />
+    </svg>
+  ),
+  Tax: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  Settings: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" />
+    </svg>
+  ),
+  Logo: () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
+    </svg>
+  ),
+};
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+// Button component
+const Button = ({ variant = "primary", disabled = false, children, onClick }) => {
+  const baseStyles = {
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontWeight: "600",
+    border: "none",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: "16px",
+    fontFamily: "Inter, sans-serif",
+    transition: "all 0.2s ease",
+    outline: "none",
+  };
 
-  body {
-    background: ${OKCH.neutral50};
-    font-family: 'Inter', sans-serif;
-    color: ${OKCH.neutral700};
-  }
+  const variantStyles = {
+    primary: {
+      backgroundColor: TOKENS.colors.green[500],
+      color: "#FFFFFF",
+    },
+    secondary: {
+      backgroundColor: "transparent",
+      color: TOKENS.colors.green[500],
+      border: `2px solid ${TOKENS.colors.green[500]}`,
+    },
+    ghost: {
+      backgroundColor: "transparent",
+      color: TOKENS.colors.neutral[700],
+    },
+    danger: {
+      backgroundColor: TOKENS.colors.semantic.danger,
+      color: "#FFFFFF",
+    },
+  };
 
-  .dashboard-container {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 0;
-    background: white;
-    border: 1px solid ${OKCH.neutral200};
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.2);
-    min-height: 100vh;
-  }
+  return (
+    <button
+      style={{ ...baseStyles, ...variantStyles[variant] }}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+};
 
-  .sidebar {
-    background: ${OKCH.neutral900};
-    padding: 26px 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-  }
+// Input component
+const Input = ({ error = false, success = false, ...props }) => {
+  const borderColor = error ? TOKENS.colors.semantic.danger : success ? TOKENS.colors.green[500] : TOKENS.colors.neutral[200];
+  return (
+    <input
+      style={{
+        width: "100%",
+        padding: "12px 16px",
+        border: `2px solid ${borderColor}`,
+        borderRadius: "8px",
+        fontFamily: "Inter, sans-serif",
+        fontSize: "16px",
+        boxSizing: "border-box",
+      }}
+      {...props}
+    />
+  );
+};
 
-  .sidebar-logo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 28px;
-    padding: 0 6px;
-  }
+// Badge component
+const Badge = ({ variant = "default", children }) => {
+  const colors = {
+    default: { bg: TOKENS.colors.neutral[100], text: TOKENS.colors.neutral[700] },
+    success: { bg: TOKENS.colors.green[100], text: TOKENS.colors.green[700] },
+    warning: { bg: "#FEF3C7", text: "#92400E" },
+    error: { bg: "#FEE2E2", text: TOKENS.colors.semantic.danger },
+  };
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "4px 12px",
+        borderRadius: "20px",
+        fontSize: "13px",
+        fontWeight: "600",
+        backgroundColor: colors[variant].bg,
+        color: colors[variant].text,
+      }}
+    >
+      {children}
+    </span>
+  );
+};
 
-  .sidebar-logo-mark {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: ${OKCH.greenPrimary};
-  }
+// Alert component
+const Alert = ({ variant = "warning", title, children }) => {
+  const styles = {
+    warning: {
+      bg: "#FFFBEB",
+      border: `4px solid #FCD34D`,
+      color: "#78350F",
+    },
+    success: {
+      bg: TOKENS.colors.green[50],
+      border: `4px solid ${TOKENS.colors.green[500]}`,
+      color: TOKENS.colors.green[700],
+    },
+    error: {
+      bg: "#FEE2E2",
+      border: `4px solid ${TOKENS.colors.semantic.danger}`,
+      color: TOKENS.colors.semantic.danger,
+    },
+  };
+  return (
+    <div
+      style={{
+        padding: "16px",
+        borderRadius: "8px",
+        backgroundColor: styles[variant].bg,
+        borderLeft: styles[variant].border,
+        color: styles[variant].color,
+      }}
+    >
+      <div style={{ fontWeight: "600", marginBottom: "4px" }}>{title}</div>
+      <div style={{ fontSize: "14px" }}>{children}</div>
+    </div>
+  );
+};
 
-  .sidebar-logo-text {
-    font-family: 'Manrope', sans-serif;
-    font-weight: 800;
-    color: white;
-    font-size: 15px;
-  }
+// Empty state component
+const EmptyState = ({ icon, title, description, action }) => (
+  <div style={{ textAlign: "center", padding: "48px 16px" }}>
+    <div style={{ fontSize: "56px", marginBottom: "16px" }}>{icon}</div>
+    <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>{title}</h3>
+    <p style={{ color: TOKENS.colors.neutral[600], marginBottom: "24px" }}>{description}</p>
+    {action && <Button variant="primary">{action}</Button>}
+  </div>
+);
 
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 9px;
-    background: transparent;
-    color: oklch(75% 0.01 240);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
+// Table component
+const Table = ({ columns, rows }) => (
+  <div style={{ overflowX: "auto" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr style={{ borderBottom: `2px solid ${TOKENS.colors.neutral[200]}` }}>
+          {columns.map((col) => (
+            <th key={col} style={{ textAlign: "left", padding: "8px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>
+              {col}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, idx) => (
+          <tr key={idx} style={{ borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
+            {row.map((cell, cidx) => (
+              <td key={cidx} style={{ padding: "12px 16px" }}>
+                {cell}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
-  .nav-item.active {
-    background: oklch(58% 0.13 150 / 0.18);
-    color: oklch(85% 0.06 150);
-  }
+// Functional Switch component
+const Switch = ({ checked, onChange, disabled = false }) => (
+  <button
+    role="switch"
+    aria-checked={checked}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+    style={{
+      position: "relative",
+      display: "inline-flex",
+      alignItems: "center",
+      height: "24px",
+      width: "44px",
+      borderRadius: "12px",
+      border: "none",
+      backgroundColor: checked ? TOKENS.colors.green[500] : TOKENS.colors.neutral[300],
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.5 : 1,
+      transition: "background-color 0.2s ease",
+    }}
+  >
+    <span
+      style={{
+        display: "inline-block",
+        height: "16px",
+        width: "16px",
+        borderRadius: "50%",
+        backgroundColor: "white",
+        position: "absolute",
+        left: checked ? "24px" : "4px",
+        transition: "left 0.2s ease",
+      }}
+    />
+  </button>
+);
 
-  .nav-icon {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    background: currentColor;
-    opacity: 0.5;
-  }
-
-  .main-content {
-    padding: 32px 36px;
-    overflow-y: auto;
-  }
-
-  .header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
-  }
-
-  .header-left div:first-child {
-    font-size: 13px;
-    color: oklch(50% 0.015 240);
-    font-weight: 600;
-  }
-
-  .header-title {
-    font-family: 'Manrope', sans-serif;
-    font-size: 24px;
-    font-weight: 800;
-    margin: 4px 0 0;
-    color: ${OKCH.neutral900};
-  }
-
-  .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: oklch(94% 0.04 150);
-    border: 1.5px solid ${OKCH.neutral200};
-  }
-
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .kpi-card {
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid ${OKCH.neutral200};
-  }
-
-  .kpi-card.hero {
-    background: ${OKCH.greenPrimary};
-    color: white;
-  }
-
-  .kpi-label {
-    font-size: 13px;
-    font-weight: 600;
-    opacity: 0.85;
-  }
-
-  .kpi-value {
-    font-family: 'Manrope', sans-serif;
-    font-size: 30px;
-    font-weight: 800;
-    margin-top: 8px;
-  }
-
-  .kpi-sub {
-    font-size: 12px;
-    opacity: 0.85;
-    margin-top: 6px;
-  }
-
-  .kpi-card.white .kpi-label { color: oklch(50% 0.015 240); }
-  .kpi-card.white .kpi-value { color: ${OKCH.neutral900}; }
-  .kpi-card.white .kpi-sub { color: oklch(45% 0.015 240); }
-
-  .lower-section {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 16px;
-  }
-
-  .chart-card {
-    background: white;
-    border: 1px solid ${OKCH.neutral200};
-    border-radius: 16px;
-    padding: 22px;
-  }
-
-  .chart-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 18px;
-  }
-
-  .bars-container {
-    display: flex;
-    align-items: flex-end;
-    gap: 14px;
-    height: 140px;
-  }
-
-  .bar-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    justify-content: flex-end;
-  }
-
-  .bar-pair {
-    width: 100%;
-    display: flex;
-    gap: 3px;
-    align-items: flex-end;
-    height: 100%;
-  }
-
-  .bar {
-    flex: 1;
-    border-radius: 4px 4px 0 0;
-  }
-
-  .bar.income { background: ${OKCH.greenPrimary}; }
-  .bar.expense { background: oklch(88% 0.02 150); }
-
-  .bar-label {
-    font-size: 11px;
-    color: oklch(55% 0.015 240);
-  }
-
-  .progress-card {
-    background: white;
-    border: 1px solid ${OKCH.neutral200};
-    border-radius: 16px;
-    padding: 22px;
-  }
-
-  .progress-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  .progress-ring {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: conic-gradient(${OKCH.greenPrimary} 0deg 216deg, oklch(92% 0.006 240) 216deg 360deg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 16px;
-  }
-
-  .progress-inner {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    background: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Manrope', sans-serif;
-    font-weight: 800;
-    font-size: 20px;
-  }
-
-  .progress-label {
-    font-size: 13px;
-    color: oklch(45% 0.015 240);
-    text-align: center;
-  }
-
-  /* Mobile responsive */
-  @media (max-width: 768px) {
-    .dashboard-container {
-      grid-template-columns: 1fr;
-      min-height: auto;
-    }
-
-    .sidebar {
-      padding: 16px 12px;
-      flex-direction: row;
-      gap: 12px;
-      align-items: center;
-      overflow-x: auto;
-      border-bottom: 1px solid ${OKCH.neutral200};
-      margin-bottom: 16px;
-    }
-
-    .sidebar-logo {
-      margin-bottom: 0;
-      padding: 0 8px;
-      flex-shrink: 0;
-    }
-
-    .nav-item {
-      padding: 8px 12px;
-      font-size: 12px;
-      flex-shrink: 0;
-    }
-
-    .main-content {
-      padding: 20px 16px;
-    }
-
-    .header-row {
-      margin-bottom: 20px;
-    }
-
-    .header-title {
-      font-size: 20px;
-    }
-
-    .kpi-grid {
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .kpi-card {
-      padding: 16px;
-    }
-
-    .kpi-value {
-      font-size: 24px;
-    }
-
-    .lower-section {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    .bars-container {
-      height: 100px;
-    }
-
-    .progress-ring {
-      width: 100px;
-      height: 100px;
-    }
-
-    .progress-inner {
-      width: 70px;
-      height: 70px;
-      font-size: 16px;
-    }
-  }
-`;
-
+// Main App
 function Dashboard() {
   const [activeNav, setActiveNav] = useState("dashboard");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [monthlyReportsEnabled, setMonthlyReportsEnabled] = useState(true);
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "income", label: "Income" },
-    { id: "expenses", label: "Expenses" },
-    { id: "tax", label: "Tax report" },
-    { id: "settings", label: "Settings" },
+    { id: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
+    { id: "income", label: "Income", Icon: Icons.Income },
+    { id: "expenses", label: "Expenses", Icon: Icons.Expenses },
+    { id: "tax", label: "Tax report", Icon: Icons.Tax },
+    { id: "settings", label: "Settings", Icon: Icons.Settings },
   ];
 
   const chartData = [
@@ -374,319 +317,364 @@ function Dashboard() {
       case "dashboard":
         return (
           <>
-            <div className="header-row">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
               <div>
-                <div>Tuesday, 11 July</div>
-                <div className="header-title">Morning, Priya 👋</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[500], fontWeight: "600" }}>TUESDAY, 11 JULY</div>
+                <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  Morning, Priya 👋
+                </h1>
               </div>
-              <div className="avatar"></div>
+              <div style={{ width: "40px", height: "40px", backgroundColor: TOKENS.colors.green[200], borderRadius: "50%" }}></div>
             </div>
 
-            <div className="kpi-grid">
-              <div className="kpi-card hero">
-                <div className="kpi-label">Estimated tax owed</div>
-                <div className="kpi-value">£3,412.60</div>
-                <div className="kpi-sub">Due 31 Jan 2027</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+              <div style={{ backgroundColor: TOKENS.colors.green[500], color: "white", borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>Estimated tax owed</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>£3,412.60</div>
+                <div style={{ fontSize: "13px", opacity: 0.85, marginTop: "8px" }}>Due 31 Jan 2027</div>
               </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Income YTD</div>
-                <div className="kpi-value">£38,960</div>
-                <div className="kpi-sub">↑ 12% vs last year</div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Income YTD</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £38,960
+                </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.green[600], marginTop: "8px" }}>↑ 12% vs last year</div>
               </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Expenses YTD</div>
-                <div className="kpi-value">£6,210</div>
-                <div className="kpi-sub">18 receipts logged</div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Expenses YTD</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £6,210
+                </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>18 receipts logged</div>
               </div>
             </div>
 
-            <div className="lower-section">
-              <div className="chart-card">
-                <div className="chart-title">Income vs expenses</div>
-                <div className="bars-container">
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px" }}>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                  Income vs expenses
+                </h3>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
                   {chartData.map((data) => (
-                    <div key={data.month} className="bar-group">
-                      <div className="bar-pair">
-                        <div className="bar income" style={{ height: `${data.income}%` }}></div>
-                        <div className="bar expense" style={{ height: `${data.expense}%` }}></div>
+                    <div key={data.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                      <div style={{ width: "100%", display: "flex", gap: "4px", alignItems: "flex-end", height: "100%" }}>
+                        <div
+                          style={{
+                            flex: 1,
+                            backgroundColor: TOKENS.colors.green[500],
+                            borderTopLeftRadius: "4px",
+                            borderTopRightRadius: "4px",
+                            height: `${data.income}%`,
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: 1,
+                            backgroundColor: TOKENS.colors.green[200],
+                            borderTopLeftRadius: "4px",
+                            borderTopRightRadius: "4px",
+                            height: `${data.expense}%`,
+                          }}
+                        ></div>
                       </div>
-                      <div className="bar-label">{data.month}</div>
+                      <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{data.month}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="progress-card">
-                <div className="progress-title">Filing progress</div>
-                <div className="progress-ring">
-                  <div className="progress-inner">60%</div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "24px", width: "100%", fontFamily: "Manrope, sans-serif" }}>
+                  Filing progress
+                </h3>
+                <div
+                  style={{
+                    width: "128px",
+                    height: "128px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: "700",
+                    fontSize: "20px",
+                    background: "conic-gradient(rgb(58, 162, 90) 0deg 216deg, rgb(229, 231, 235) 216deg 360deg)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "96px",
+                      height: "96px",
+                      backgroundColor: "white",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "700",
+                      fontSize: "18px",
+                    }}
+                  >
+                    60%
+                  </div>
                 </div>
-                <div className="progress-label">3 of 5 steps complete</div>
+                <p style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "16px", textAlign: "center" }}>
+                  3 of 5 steps complete
+                </p>
               </div>
             </div>
           </>
         );
+
       case "income":
         return (
           <>
-            <div className="header-row" style={{ marginBottom: "24px" }}>
-              <div style={{ flex: 1 }}>
-                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Income</div>
-                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Track and manage your income sources</div>
-              </div>
-              <div className="avatar"></div>
+            <div style={{ marginBottom: "32px" }}>
+              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                Income
+              </h1>
+              <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Track and manage your income sources</p>
             </div>
 
-            <div className="kpi-grid">
-              <div className="kpi-card white">
-                <div className="kpi-label">Total income YTD</div>
-                <div className="kpi-value">£38,960</div>
-                <div className="kpi-sub">↑ 12% vs last year</div>
-              </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">This month</div>
-                <div className="kpi-value">£3,540</div>
-                <div className="kpi-sub">4 payments received</div>
-              </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Average per month</div>
-                <div className="kpi-value">£6,493</div>
-                <div className="kpi-sub">Based on 6 months</div>
-              </div>
-            </div>
-
-            <div className="lower-section">
-              <div className="chart-card">
-                <div className="chart-title">Income trend</div>
-                <div className="bars-container">
-                  {chartData.map((data) => (
-                    <div key={data.month} className="bar-group">
-                      <div className="bar-pair">
-                        <div className="bar income" style={{ height: `${data.income}%`, width: "100%" }}></div>
-                      </div>
-                      <div className="bar-label">{data.month}</div>
-                    </div>
-                  ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Total income YTD</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £38,960
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.green[600], marginTop: "8px" }}>↑ 12% vs last year</div>
               </div>
-
-              <div className="progress-card">
-                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Income sources</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div style={{ padding: "12px", background: OKCH.greenLight, borderRadius: "10px", fontSize: "14px", fontWeight: 500, color: OKCH.neutral900 }}>Freelance work: £24,580</div>
-                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", fontSize: "14px", fontWeight: 500, color: OKCH.neutral900 }}>Consulting: £14,380</div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>This month</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £3,540
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>4 payments received</div>
+              </div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Average per month</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £6,493
+                </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Based on 6 months</div>
               </div>
             </div>
+
+            <Alert variant="warning" title="📌 Income Tip" description="Make sure all income sources are recorded for accurate tax calculations." />
           </>
         );
+
       case "expenses":
         return (
           <>
-            <div className="header-row" style={{ marginBottom: "24px" }}>
-              <div style={{ flex: 1 }}>
-                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Expenses</div>
-                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Log and categorize your business expenses</div>
-              </div>
-              <div className="avatar"></div>
+            <div style={{ marginBottom: "32px" }}>
+              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                Expenses
+              </h1>
+              <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Log and categorize your business expenses</p>
             </div>
 
-            <div className="kpi-grid">
-              <div className="kpi-card white">
-                <div className="kpi-label">Total expenses YTD</div>
-                <div className="kpi-value">£6,210</div>
-                <div className="kpi-sub">18 receipts logged</div>
-              </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">This month</div>
-                <div className="kpi-value">£1,240</div>
-                <div className="kpi-sub">12 entries</div>
-              </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Average per month</div>
-                <div className="kpi-value">£1,035</div>
-                <div className="kpi-sub">Based on 6 months</div>
-              </div>
-            </div>
-
-            <div className="lower-section">
-              <div className="chart-card">
-                <div className="chart-title">Expense trend</div>
-                <div className="bars-container">
-                  {chartData.map((data) => (
-                    <div key={data.month} className="bar-group">
-                      <div className="bar-pair">
-                        <div className="bar expense" style={{ height: `${data.expense}%`, width: "100%" }}></div>
-                      </div>
-                      <div className="bar-label">{data.month}</div>
-                    </div>
-                  ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Total expenses YTD</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £6,210
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>18 receipts logged</div>
               </div>
-
-              <div className="progress-card">
-                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Top categories</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "14px", fontWeight: 500 }}>Software</span>
-                    <span style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>£1,850</span>
-                  </div>
-                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "14px", fontWeight: 500 }}>Travel</span>
-                    <span style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>£1,240</span>
-                  </div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>This month</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £1,240
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>12 entries</div>
+              </div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Average per month</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £1,035
+                </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Based on 6 months</div>
               </div>
             </div>
+
+            <Alert variant="info" title="💡 Tip" description="Keep receipts organized by category to speed up tax filing." />
           </>
         );
+
       case "tax":
         return (
           <>
-            <div className="header-row" style={{ marginBottom: "24px" }}>
-              <div style={{ flex: 1 }}>
-                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Tax Report</div>
-                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>View your tax liability and estimates</div>
-              </div>
-              <div className="avatar"></div>
+            <div style={{ marginBottom: "32px" }}>
+              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                Tax Report
+              </h1>
+              <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>View your tax liability and estimates</p>
             </div>
 
-            <div className="kpi-grid">
-              <div className="kpi-card hero">
-                <div className="kpi-label">Estimated tax bill</div>
-                <div className="kpi-value">£4,200</div>
-                <div className="kpi-sub">2025/26 Tax Year</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+              <div style={{ backgroundColor: TOKENS.colors.green[500], color: "white", borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>Estimated tax bill</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>£4,200</div>
+                <div style={{ fontSize: "13px", opacity: 0.85, marginTop: "8px" }}>2025/26 Tax Year</div>
               </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Tax reserved</div>
-                <div className="kpi-value">£1,820</div>
-                <div className="kpi-sub">43% of estimate</div>
-              </div>
-              <div className="kpi-card white">
-                <div className="kpi-label">Still required</div>
-                <div className="kpi-value">£2,380</div>
-                <div className="kpi-sub">Due by 31 Jan 2027</div>
-              </div>
-            </div>
-
-            <div className="lower-section">
-              <div className="chart-card">
-                <div className="chart-title">Tax breakdown</div>
-                <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Income tax (20%)</div>
-                    <div style={{ height: "8px", background: OKCH.neutral100, borderRadius: "4px", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: "60%", background: OKCH.greenPrimary, borderRadius: "4px" }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>National Insurance</div>
-                    <div style={{ height: "8px", background: OKCH.neutral100, borderRadius: "4px", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: "40%", background: OKCH.greenPrimary, borderRadius: "4px" }}></div>
-                    </div>
-                  </div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Tax reserved</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £1,820
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>43% of estimate</div>
               </div>
-
-              <div className="progress-card">
-                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Payment deadlines</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <div style={{ padding: "10px", background: OKCH.neutral100, borderRadius: "8px", fontSize: "13px" }}>
-                    <div style={{ fontWeight: 600, color: OKCH.neutral900 }}>31 Jan 2027</div>
-                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Self Assessment due</div>
-                  </div>
-                  <div style={{ padding: "10px", background: OKCH.neutral100, borderRadius: "8px", fontSize: "13px" }}>
-                    <div style={{ fontWeight: 600, color: OKCH.neutral900 }}>31 Jul 2026</div>
-                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>First payment on account</div>
-                  </div>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Still required</div>
+                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  £2,380
                 </div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Due by 31 Jan 2027</div>
               </div>
             </div>
+
+            <Alert variant="warning" title="⚠️ Upcoming Deadline" description="Payment on account due 31 July 2026. Set aside £350 per month." />
           </>
         );
+
       case "settings":
         return (
           <>
-            <div className="header-row" style={{ marginBottom: "24px" }}>
-              <div style={{ flex: 1 }}>
-                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Settings</div>
-                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Manage your account preferences</div>
-              </div>
-              <div className="avatar"></div>
+            <div style={{ marginBottom: "32px" }}>
+              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                Settings
+              </h1>
+              <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Manage your account preferences</p>
             </div>
 
-            <div className="chart-card" style={{ marginBottom: "16px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "20px" }}>Account Information</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                Account Information
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Business Type</div>
-                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>Sole Trader</div>
+                  <label style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Business Type</label>
+                  <p style={{ color: TOKENS.colors.neutral[900], marginTop: "4px" }}>Sole Trader</p>
                 </div>
                 <div>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Trading Since</div>
-                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>October 2025</div>
+                  <label style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Trading Since</label>
+                  <p style={{ color: TOKENS.colors.neutral[900], marginTop: "4px" }}>October 2025</p>
                 </div>
                 <div>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>VAT Registered</div>
-                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>No</div>
+                  <label style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>VAT Registered</label>
+                  <p style={{ color: TOKENS.colors.neutral[900], marginTop: "4px" }}>No</p>
                 </div>
               </div>
             </div>
 
-            <div className="chart-card">
-              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "20px" }}>Preferences</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "14px", borderBottom: `1px solid ${OKCH.neutral200}` }}>
+            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                Preferences
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "16px", borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
                   <div>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>Email notifications</div>
-                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Receive tax deadline alerts</div>
+                    <div style={{ fontWeight: "600", color: TOKENS.colors.neutral[900] }}>Email notifications</div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "4px" }}>Receive tax deadline alerts</div>
                   </div>
-                  <div style={{ width: "44px", height: "24px", background: OKCH.greenPrimary, borderRadius: "12px" }}></div>
+                  <Switch checked={notificationsEnabled} onChange={setNotificationsEnabled} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>Monthly reports</div>
-                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Get automatic summary emails</div>
+                    <div style={{ fontWeight: "600", color: TOKENS.colors.neutral[900] }}>Monthly reports</div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "4px" }}>Get automatic summary emails</div>
                   </div>
-                  <div style={{ width: "44px", height: "24px", background: OKCH.greenPrimary, borderRadius: "12px" }}></div>
+                  <Switch checked={monthlyReportsEnabled} onChange={setMonthlyReportsEnabled} />
                 </div>
               </div>
             </div>
           </>
         );
+
       default:
         return null;
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: OKCH.neutral50, padding: "20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <style>{styles}</style>
-
-      <div className="dashboard-container">
-        {/* Sidebar */}
-        <div className="sidebar">
-          <div className="sidebar-logo">
-            <div className="sidebar-logo-mark"></div>
-            <div className="sidebar-logo-text">TaxMate</div>
+    <div style={{ display: "flex", height: "100vh", backgroundColor: TOKENS.colors.neutral[50], fontFamily: "Inter, sans-serif" }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: "220px",
+          backgroundColor: TOKENS.colors.neutral[900],
+          color: "white",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          borderRight: `1px solid ${TOKENS.colors.neutral[800]}`,
+        }}
+      >
+        {/* Logo */}
+        <div style={{ padding: "24px 18px", display: "flex", alignItems: "center", gap: "12px", borderBottom: `1px solid ${TOKENS.colors.neutral[800]}` }}>
+          <div style={{ width: "32px", height: "32px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icons.Logo />
           </div>
-          {navItems.map((item) => (
-            <div
-              key={item.id}
-              className={`nav-item ${activeNav === item.id ? "active" : ""}`}
-              onClick={() => setActiveNav(item.id)}
-            >
-              <div className="nav-icon"></div>
-              {item.label}
-            </div>
-          ))}
+          <span style={{ fontWeight: "700", fontSize: "18px" }}>TaxMate</span>
         </div>
 
-        {/* Main Content */}
-        <div className="main-content">
+        {/* Navigation */}
+        <nav style={{ flex: 1, padding: "24px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              aria-current={activeNav === item.id ? "page" : undefined}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "12px 16px",
+                borderRadius: "9px",
+                border: "none",
+                backgroundColor: activeNav === item.id ? TOKENS.colors.green[500] : "transparent",
+                color: activeNav === item.id ? "white" : TOKENS.colors.neutral[400],
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                fontSize: "14px",
+                fontWeight: "500",
+                fontFamily: "Inter, sans-serif",
+              }}
+              onMouseEnter={(e) => {
+                if (activeNav !== item.id) {
+                  e.target.style.backgroundColor = TOKENS.colors.neutral[800];
+                  e.target.style.color = "white";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeNav !== item.id) {
+                  e.target.style.backgroundColor = "transparent";
+                  e.target.style.color = TOKENS.colors.neutral[400];
+                }
+              }}
+            >
+              <item.Icon />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div style={{ padding: "24px 16px", borderTop: `1px solid ${TOKENS.colors.neutral[800]}`, fontSize: "12px", color: TOKENS.colors.neutral[500] }}>
+          <p>© 2026 Daramola Digital Labs.</p>
+          <p style={{ marginTop: "8px" }}>TaxMate UK is a product of Daramola Digital Labs.</p>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "32px 36px" }}>
           {renderContent()}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
