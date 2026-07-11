@@ -428,39 +428,231 @@ function Dashboard() {
         );
       case "income":
         return (
-          <div className="header-row" style={{ marginBottom: "20px" }}>
-            <div style={{ flex: 1 }}>
-              <div className="header-title" style={{ margin: 0 }}>Income</div>
-              <div style={{ fontSize: "14px", color: OKCH.neutral500, marginTop: "8px" }}>Track and manage your income sources</div>
+          <>
+            <div className="header-row" style={{ marginBottom: "24px" }}>
+              <div style={{ flex: 1 }}>
+                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Income</div>
+                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Track and manage your income sources</div>
+              </div>
+              <div className="avatar"></div>
             </div>
-          </div>
+
+            <div className="kpi-grid">
+              <div className="kpi-card white">
+                <div className="kpi-label">Total income YTD</div>
+                <div className="kpi-value">£38,960</div>
+                <div className="kpi-sub">↑ 12% vs last year</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">This month</div>
+                <div className="kpi-value">£3,540</div>
+                <div className="kpi-sub">4 payments received</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">Average per month</div>
+                <div className="kpi-value">£6,493</div>
+                <div className="kpi-sub">Based on 6 months</div>
+              </div>
+            </div>
+
+            <div className="lower-section">
+              <div className="chart-card">
+                <div className="chart-title">Income trend</div>
+                <div className="bars-container">
+                  {chartData.map((data) => (
+                    <div key={data.month} className="bar-group">
+                      <div className="bar-pair">
+                        <div className="bar income" style={{ height: `${data.income}%`, width: "100%" }}></div>
+                      </div>
+                      <div className="bar-label">{data.month}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="progress-card">
+                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Income sources</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ padding: "12px", background: OKCH.greenLight, borderRadius: "10px", fontSize: "14px", fontWeight: 500, color: OKCH.neutral900 }}>Freelance work: £24,580</div>
+                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", fontSize: "14px", fontWeight: 500, color: OKCH.neutral900 }}>Consulting: £14,380</div>
+                </div>
+              </div>
+            </div>
+          </>
         );
       case "expenses":
         return (
-          <div className="header-row" style={{ marginBottom: "20px" }}>
-            <div style={{ flex: 1 }}>
-              <div className="header-title" style={{ margin: 0 }}>Expenses</div>
-              <div style={{ fontSize: "14px", color: OKCH.neutral500, marginTop: "8px" }}>Log and categorize your business expenses</div>
+          <>
+            <div className="header-row" style={{ marginBottom: "24px" }}>
+              <div style={{ flex: 1 }}>
+                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Expenses</div>
+                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Log and categorize your business expenses</div>
+              </div>
+              <div className="avatar"></div>
             </div>
-          </div>
+
+            <div className="kpi-grid">
+              <div className="kpi-card white">
+                <div className="kpi-label">Total expenses YTD</div>
+                <div className="kpi-value">£6,210</div>
+                <div className="kpi-sub">18 receipts logged</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">This month</div>
+                <div className="kpi-value">£1,240</div>
+                <div className="kpi-sub">12 entries</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">Average per month</div>
+                <div className="kpi-value">£1,035</div>
+                <div className="kpi-sub">Based on 6 months</div>
+              </div>
+            </div>
+
+            <div className="lower-section">
+              <div className="chart-card">
+                <div className="chart-title">Expense trend</div>
+                <div className="bars-container">
+                  {chartData.map((data) => (
+                    <div key={data.month} className="bar-group">
+                      <div className="bar-pair">
+                        <div className="bar expense" style={{ height: `${data.expense}%`, width: "100%" }}></div>
+                      </div>
+                      <div className="bar-label">{data.month}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="progress-card">
+                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Top categories</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 500 }}>Software</span>
+                    <span style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>£1,850</span>
+                  </div>
+                  <div style={{ padding: "12px", background: OKCH.neutral100, borderRadius: "10px", display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 500 }}>Travel</span>
+                    <span style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>£1,240</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         );
       case "tax":
         return (
-          <div className="header-row" style={{ marginBottom: "20px" }}>
-            <div style={{ flex: 1 }}>
-              <div className="header-title" style={{ margin: 0 }}>Tax Report</div>
-              <div style={{ fontSize: "14px", color: OKCH.neutral500, marginTop: "8px" }}>View your tax liability and estimates</div>
+          <>
+            <div className="header-row" style={{ marginBottom: "24px" }}>
+              <div style={{ flex: 1 }}>
+                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Tax Report</div>
+                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>View your tax liability and estimates</div>
+              </div>
+              <div className="avatar"></div>
             </div>
-          </div>
+
+            <div className="kpi-grid">
+              <div className="kpi-card hero">
+                <div className="kpi-label">Estimated tax bill</div>
+                <div className="kpi-value">£4,200</div>
+                <div className="kpi-sub">2025/26 Tax Year</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">Tax reserved</div>
+                <div className="kpi-value">£1,820</div>
+                <div className="kpi-sub">43% of estimate</div>
+              </div>
+              <div className="kpi-card white">
+                <div className="kpi-label">Still required</div>
+                <div className="kpi-value">£2,380</div>
+                <div className="kpi-sub">Due by 31 Jan 2027</div>
+              </div>
+            </div>
+
+            <div className="lower-section">
+              <div className="chart-card">
+                <div className="chart-title">Tax breakdown</div>
+                <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Income tax (20%)</div>
+                    <div style={{ height: "8px", background: OKCH.neutral100, borderRadius: "4px", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: "60%", background: OKCH.greenPrimary, borderRadius: "4px" }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>National Insurance</div>
+                    <div style={{ height: "8px", background: OKCH.neutral100, borderRadius: "4px", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: "40%", background: OKCH.greenPrimary, borderRadius: "4px" }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="progress-card">
+                <div style={{ fontSize: "13px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "16px" }}>Payment deadlines</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div style={{ padding: "10px", background: OKCH.neutral100, borderRadius: "8px", fontSize: "13px" }}>
+                    <div style={{ fontWeight: 600, color: OKCH.neutral900 }}>31 Jan 2027</div>
+                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Self Assessment due</div>
+                  </div>
+                  <div style={{ padding: "10px", background: OKCH.neutral100, borderRadius: "8px", fontSize: "13px" }}>
+                    <div style={{ fontWeight: 600, color: OKCH.neutral900 }}>31 Jul 2026</div>
+                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>First payment on account</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         );
       case "settings":
         return (
-          <div className="header-row" style={{ marginBottom: "20px" }}>
-            <div style={{ flex: 1 }}>
-              <div className="header-title" style={{ margin: 0 }}>Settings</div>
-              <div style={{ fontSize: "14px", color: OKCH.neutral500, marginTop: "8px" }}>Manage your account preferences</div>
+          <>
+            <div className="header-row" style={{ marginBottom: "24px" }}>
+              <div style={{ flex: 1 }}>
+                <div className="header-title" style={{ margin: "0 0 8px 0" }}>Settings</div>
+                <div style={{ fontSize: "14px", color: OKCH.neutral500 }}>Manage your account preferences</div>
+              </div>
+              <div className="avatar"></div>
             </div>
-          </div>
+
+            <div className="chart-card" style={{ marginBottom: "16px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "20px" }}>Account Information</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Business Type</div>
+                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>Sole Trader</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>Trading Since</div>
+                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>October 2025</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: OKCH.neutral700, marginBottom: "6px" }}>VAT Registered</div>
+                  <div style={{ fontSize: "14px", color: OKCH.neutral900 }}>No</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="chart-card">
+              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "20px" }}>Preferences</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "14px", borderBottom: `1px solid ${OKCH.neutral200}` }}>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>Email notifications</div>
+                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Receive tax deadline alerts</div>
+                  </div>
+                  <div style={{ width: "44px", height: "24px", background: OKCH.greenPrimary, borderRadius: "12px" }}></div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: OKCH.neutral900 }}>Monthly reports</div>
+                    <div style={{ fontSize: "12px", color: OKCH.neutral600 }}>Get automatic summary emails</div>
+                  </div>
+                  <div style={{ width: "44px", height: "24px", background: OKCH.greenPrimary, borderRadius: "12px" }}></div>
+                </div>
+              </div>
+            </div>
+          </>
         );
       default:
         return null;
