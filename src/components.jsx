@@ -1,5 +1,50 @@
 import { TOKENS } from "./tokens";
 
+// Button component - reusable design system component
+export const Button = ({ variant = "primary", disabled = false, children, onClick }) => {
+  const baseStyles = {
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontWeight: "600",
+    border: "none",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: "16px",
+    fontFamily: "Inter, sans-serif",
+    transition: "all 0.2s ease",
+    outline: "none",
+  };
+
+  const variantStyles = {
+    primary: {
+      backgroundColor: TOKENS.colors.green[500],
+      color: "#FFFFFF",
+    },
+    secondary: {
+      backgroundColor: "transparent",
+      color: TOKENS.colors.green[500],
+      border: `2px solid ${TOKENS.colors.green[500]}`,
+    },
+    ghost: {
+      backgroundColor: "transparent",
+      color: TOKENS.colors.neutral[700],
+    },
+    danger: {
+      backgroundColor: TOKENS.colors.semantic.danger,
+      color: "#FFFFFF",
+    },
+  };
+
+  return (
+    <button
+      style={{ ...baseStyles, ...variantStyles[variant] }}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+};
+
 // Input component
 export const Input = ({ error = false, success = false, ...props }) => {
   const borderColor = error ? TOKENS.colors.semantic.danger : success ? TOKENS.colors.green[500] : TOKENS.colors.neutral[200];
@@ -104,6 +149,20 @@ export const Table = ({ columns, rows }) => (
         ))}
       </tbody>
     </table>
+  </div>
+);
+
+// Empty state component - reusable design system component
+export const EmptyState = ({ icon, title, description, action }) => (
+  <div style={{ textAlign: "center", padding: "48px 16px" }}>
+    <div style={{ fontSize: "56px", marginBottom: "16px" }}>{icon}</div>
+    <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px", color: TOKENS.colors.neutral[900] }}>
+      {title}
+    </h3>
+    <p style={{ color: TOKENS.colors.neutral[600], marginBottom: "24px" }}>
+      {description}
+    </p>
+    {action && <Button variant="primary">{action}</Button>}
   </div>
 );
 
