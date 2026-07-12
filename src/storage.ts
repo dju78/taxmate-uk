@@ -1,6 +1,14 @@
 // Storage service - abstraction layer for income and expense data persistence
 // Currently uses localStorage; can be replaced with backend API
 import type { IncomeRecord, ExpenseRecord, ExportBundle, ExportPreferences, IncomeCalcRecord, ExpenseCalcRecord } from './types';
+import { isValidAmount, isValidDateString } from './validation';
+
+export interface ImportValidationResult {
+  ok: boolean;
+  errors: string[];
+  income: IncomeRecord[];
+  expenses: ExpenseRecord[];
+}
 
 const INCOME_STORAGE_KEY = 'taxmate_income_records';
 const EXPENSE_STORAGE_KEY = 'taxmate_expense_records';
@@ -590,5 +598,169 @@ export const storageService = {
       pence[key] = (pence[key] || 0) + storageService.toPence(r.amount);
     });
     return Object.fromEntries(Object.entries(pence).map(([k, v]) => [k, v / 100]));
+  },
+
+  // ---------------------------------------------------------------------------
+  // Clear all data
+  // ---------------------------------------------------------------------------
+
+  clearAllData: (): void => {
+    localStorage.setItem(INCOME_STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify([]));
+  },
+
+  // ---------------------------------------------------------------------------
+  // Demo data (isolated from user records via isDemo:true)
+  // ---------------------------------------------------------------------------
+
+  getDemoData: (today: Date = new Date()): { income: IncomeRecord[]; expenses: ExpenseRecord[] } => {
+    const y = storageService.getCurrentTaxYearStartYear(today); // start year of current tax year
+    const iso = (year: number, month1: number, day: number) =>
+      `${year}-${String(month1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const income: IncomeRecord[] = [
+      { id: generateId(), date: iso(y, 5, 15), source: 'Demo Client A', category: 'Client work', amount: '2400.00', status: 'received', description: 'Website build', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 3), source: 'Demo Client B', category: 'Freelance', amount: '1500.00', status: 'received', description: 'Design sprint', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 20), source: 'Demo Client C', category: 'Client work', amount: '800.00', status: 'pending', description: 'Retainer', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 5, 28), source: 'Demo Client D', category: 'Freelance', amount: '650.00', status: 'overdue', description: 'Audit', notes: '', isDemo: true },
+    ];
+    const expenses: ExpenseRecord[] = [
+      { id: generateId(), date: iso(y, 5, 10), merchant: 'Demo Stationers', category: 'Supplies', amount: '45.99', paymentMethod: 'Card', description: 'Printer paper', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 12), merchant: 'Demo Rail', category: 'Travel', amount: '78.50', paymentMethod: 'Card', description: 'Client visit', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 1), merchant: 'Demo Software Co', category: 'Software', amount: '120.00', paymentMethod: 'Card', description: 'Annual licence', notes: '', isDemo: true },
+    ];
+    return { income, expenses };
+  },
+
+  hasDemoData: (): boolean => {
+    const income = storageService.getIncomeRecords();
+    const expenses = storageService.getExpenseRecords();
+    return income.some((r) => r.isDemo === true) || expenses.some((r) => r.isDemo === true);
+  },
+
+  // Add demo records (idempotent: does nothing if demo data is already present).
+  loadDemoData: (today: Date = new Date()): { income: number; expenses: number } => {
+    if (storageService.hasDemoData()) return { income: 0, expenses: 0 };
+    const demo = storageService.getDemoData(today);
+    const income = [...storageService.getIncomeRecords(), ...demo.income];
+    const expenses = [...storageService.getExpenseRecords(), ...demo.expenses];
+    localStorage.setItem(INCOME_STORAGE_KEY, JSON.stringify(income));
+    localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(expenses));
+    return { income: demo.income.length, expenses: demo.expenses.length };
+  },
+
+  // Remove ONLY demo records, preserving user-created records.
+  removeDemoData: (): { income: number; expenses: number } => {
+    const income = storageService.getIncomeRecords();
+    const expenses = storageService.getExpenseRecords();
+    const keptIncome = income.filter((r) => r.isDemo !== true);
+    const keptExpenses = expenses.filter((r) => r.isDemo !== true);
+    localStorage.setItem(INCOME_STORAGE_KEY, JSON.stringify(keptIncome));
+    localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(keptExpenses));
+    return { income: income.length - keptIncome.length, expenses: expenses.length - keptExpenses.length };
+  },
+
+  // ---------------------------------------------------------------------------
+  // Import (structural validation -> preview -> apply)
+  // ---------------------------------------------------------------------------
+
+  // Validate parsed JSON structurally. Returns normalised records plus any
+  // errors; when errors exist, ok is false and callers MUST NOT import.
+  validateImportData: (data: unknown): ImportValidationResult => {
+    const errors: string[] = [];
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      return { ok: false, errors: ['File is not a valid TaxMate backup (expected a JSON object).'], income: [], expenses: [] };
+    }
+    const d = data as Record<string, unknown>;
+    const rawIncome = d.income;
+    const rawExpenses = d.expenses;
+    if (rawIncome !== undefined && !Array.isArray(rawIncome)) errors.push('"income" must be an array.');
+    if (rawExpenses !== undefined && !Array.isArray(rawExpenses)) errors.push('"expenses" must be an array.');
+    if (rawIncome === undefined && rawExpenses === undefined) {
+      errors.push('Backup must contain an "income" and/or "expenses" array.');
+    }
+
+    const income: IncomeRecord[] = [];
+    const expenses: ExpenseRecord[] = [];
+    const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
+
+    if (Array.isArray(rawIncome)) {
+      rawIncome.forEach((item, i) => {
+        if (typeof item !== 'object' || item === null) {
+          errors.push(`income[${i}] is not an object.`);
+          return;
+        }
+        const r = item as Record<string, unknown>;
+        if (!isValidDateString(r.date)) errors.push(`income[${i}]: invalid or missing date (expected YYYY-MM-DD).`);
+        if (!isValidAmount(r.amount)) errors.push(`income[${i}]: invalid or missing amount.`);
+        const status = storageService.normaliseIncomeStatus(r.status);
+        if (!INCOME_STATUS_VALUES.includes(status)) errors.push(`income[${i}]: invalid status "${String(r.status)}".`);
+        if (!str(r.source).trim()) errors.push(`income[${i}]: missing source.`);
+        income.push({
+          id: str(r.id) || generateId(),
+          date: str(r.date),
+          source: str(r.source),
+          category: str(r.category, 'Other'),
+          amount: str(r.amount),
+          status,
+          description: str(r.description),
+          notes: str(r.notes),
+          isDemo: r.isDemo === true,
+        });
+      });
+    }
+
+    if (Array.isArray(rawExpenses)) {
+      rawExpenses.forEach((item, i) => {
+        if (typeof item !== 'object' || item === null) {
+          errors.push(`expenses[${i}] is not an object.`);
+          return;
+        }
+        const r = item as Record<string, unknown>;
+        if (!isValidDateString(r.date)) errors.push(`expenses[${i}]: invalid or missing date (expected YYYY-MM-DD).`);
+        if (!isValidAmount(r.amount)) errors.push(`expenses[${i}]: invalid or missing amount.`);
+        if (!str(r.merchant).trim()) errors.push(`expenses[${i}]: missing merchant.`);
+        if (!str(r.category).trim()) errors.push(`expenses[${i}]: missing category.`);
+        expenses.push({
+          id: str(r.id) || generateId(),
+          date: str(r.date),
+          merchant: str(r.merchant),
+          category: str(r.category, 'Other'),
+          amount: str(r.amount),
+          paymentMethod: str(r.paymentMethod, 'Card'),
+          description: str(r.description),
+          notes: str(r.notes),
+          isDemo: r.isDemo === true,
+        });
+      });
+    }
+
+    return { ok: errors.length === 0, errors, income, expenses };
+  },
+
+  // Parse raw text then validate (JSON parse errors become validation errors).
+  parseImportText: (text: string): ImportValidationResult => {
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { ok: false, errors: ['File is not valid JSON.'], income: [], expenses: [] };
+    }
+    return storageService.validateImportData(data);
+  },
+
+  // Merge validated records into storage, skipping records whose id already
+  // exists (so re-importing the same backup does not duplicate). Existing data
+  // is only overwritten once, after the merged arrays are built, so a failure
+  // before this point leaves stored data untouched.
+  applyImport: (income: IncomeRecord[], expenses: ExpenseRecord[]): { income: number; expenses: number } => {
+    const existingIncome = storageService.getIncomeRecords();
+    const existingExpenses = storageService.getExpenseRecords();
+    const incomeIds = new Set(existingIncome.map((r) => r.id));
+    const expenseIds = new Set(existingExpenses.map((r) => r.id));
+    const newIncome = income.filter((r) => !incomeIds.has(r.id));
+    const newExpenses = expenses.filter((r) => !expenseIds.has(r.id));
+    localStorage.setItem(INCOME_STORAGE_KEY, JSON.stringify([...existingIncome, ...newIncome]));
+    localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify([...existingExpenses, ...newExpenses]));
+    return { income: newIncome.length, expenses: newExpenses.length };
   },
 };

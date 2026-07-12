@@ -9,6 +9,7 @@ import { useTaxStore, taxYearStartToLabel } from "./store";
 import { TaxYearSelector } from "./TaxYearSelector";
 import { AddTransactionButton } from "./AddTransactionButton";
 import { StorageNoticeBanner } from "./StorageNoticeBanner";
+import { DataAndBackup } from "./DataAndBackup";
 
 // SVG Icons
 const Icons = {
@@ -252,38 +253,11 @@ function Dashboard() {
   // window-based calculations (totals, tables, charts, breakdowns, counts).
   const taxRef = storageService.getTaxYearStartForYear(selectedTaxYear);
   const selectedTaxYearLabel = taxYearStartToLabel(selectedTaxYear);
+  const hasDemoData = incomeRecords.some((r) => r.isDemo) || expenseRecords.some((r) => r.isDemo);
 
   useEffect(() => {
     storageService.migrateIfNeeded();
   }, []);
-
-  // Trigger a client-side file download.
-  const downloadFile = (filename, content, mime) => {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const stamp = () => new Date().toISOString().slice(0, 10);
-  // JSON is a COMPLETE backup (all years) plus the saved tax-year preference.
-  const handleExportJSON = () => {
-    const bundle = storageService.getExportBundle({ selectedTaxYear });
-    downloadFile(`taxmate-backup-${stamp()}.json`, JSON.stringify(bundle, null, 2), 'application/json');
-  };
-  // CSV export is SCOPED to the selected tax year (ledger export).
-  const handleExportCSV = () => {
-    const yearTag = selectedTaxYearLabel.replace('/', '-');
-    const income = storageService.recordsToCSV(storageService.getIncomeInTaxYear(incomeRecords, taxRef));
-    const expenses = storageService.recordsToCSV(storageService.getExpensesInTaxYear(expenseRecords, taxRef));
-    downloadFile(`taxmate-income-${yearTag}-${stamp()}.csv`, income || 'No income records', 'text/csv');
-    downloadFile(`taxmate-expenses-${yearTag}-${stamp()}.csv`, expenses || 'No expense records', 'text/csv');
-  };
 
   // Transaction form handlers + modals live at the App level so the global
   // "+ Add transaction" action can open them from any view.
@@ -591,7 +565,9 @@ function Dashboard() {
                     rows={sortedRecords}
                     columns={[
                       { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
-                      { key: "source", label: "Source", render: (r) => r.source },
+                      { key: "source", label: "Source", render: (r) => (
+                        <span>{r.source}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
+                      ) },
                       { key: "category", label: "Category", render: (r) => r.category },
                       { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
                       { key: "status", label: "Status", render: (r) => <Badge variant={getStatusBadgeVariant(r.status)}>{getStatusLabel(r.status)}</Badge> },
@@ -763,7 +739,9 @@ function Dashboard() {
                     rows={sortedRecords}
                     columns={[
                       { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
-                      { key: "merchant", label: "Merchant", render: (r) => r.merchant },
+                      { key: "merchant", label: "Merchant", render: (r) => (
+                        <span>{r.merchant}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
+                      ) },
                       { key: "category", label: "Category", render: (r) => r.category },
                       { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
                       { key: "method", label: "Method", render: (r) => r.paymentMethod },
@@ -947,17 +925,8 @@ function Dashboard() {
               </div>
             </div>
 
-            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginTop: "24px" }}>
-              <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "8px", fontFamily: "Manrope, sans-serif" }}>
-                Data &amp; backup
-              </h2>
-              <p style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginBottom: "16px" }}>
-                Your records are stored only in this browser (localStorage). They are not sent to any server and may be lost if you clear your browser data or switch device. Export a backup regularly.
-              </p>
-              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                <Button variant="secondary" onClick={handleExportJSON}>Export JSON backup</Button>
-                <Button variant="secondary" onClick={handleExportCSV}>Export CSV (income &amp; expenses)</Button>
-              </div>
+            <div style={{ marginTop: "24px" }}>
+              <DataAndBackup />
             </div>
           </>
         );
@@ -1068,6 +1037,11 @@ function Dashboard() {
         <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 36px", boxSizing: "border-box" }}>
           {/* Global toolbar (visible across all views) */}
           <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+            {hasDemoData && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                Demo data loaded
+              </span>
+            )}
             <TaxYearSelector />
             <AddTransactionButton onAddIncome={openAddIncome} onAddExpense={openAddExpense} />
           </div>

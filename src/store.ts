@@ -50,6 +50,10 @@ export interface TaxStore {
   addExpense: (record: Partial<ExpenseRecord>) => void;
   updateExpense: (id: string, record: Partial<ExpenseRecord>) => void;
   deleteExpense: (id: string) => void;
+  loadDemo: () => { income: number; expenses: number };
+  removeDemo: () => { income: number; expenses: number };
+  clearAll: () => void;
+  importData: (income: IncomeRecord[], expenses: ExpenseRecord[]) => { income: number; expenses: number };
 }
 
 export const useTaxStore = create<TaxStore>((set, get) => ({
@@ -92,5 +96,24 @@ export const useTaxStore = create<TaxStore>((set, get) => ({
   deleteExpense: (id) => {
     storageService.deleteExpenseRecord(id);
     get().refresh();
+  },
+  loadDemo: () => {
+    const result = storageService.loadDemoData();
+    get().refresh();
+    return result;
+  },
+  removeDemo: () => {
+    const result = storageService.removeDemoData();
+    get().refresh();
+    return result;
+  },
+  clearAll: () => {
+    storageService.clearAllData();
+    get().refresh();
+  },
+  importData: (income, expenses) => {
+    const result = storageService.applyImport(income, expenses);
+    get().refresh();
+    return result;
   },
 }));
