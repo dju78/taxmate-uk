@@ -3,7 +3,7 @@ import { TOKENS } from "./tokens";
 import { Alert, Switch, Button, Badge, EmptyState } from "./components";
 import { IncomeForm } from "./IncomeForm";
 import { ExpenseForm } from "./ExpenseForm";
-import { storageService } from "./storage";
+import { storageService, INCOME_STATUS, INCOME_STATUS_LABELS } from "./storage";
 
 // SVG Icons
 const Icons = {
@@ -313,10 +313,12 @@ function Dashboard() {
         const thisMonth = storageService.calculateIncomeThisMonth();
         const avgMonthly = storageService.calculateAverageMonthlyIncome();
         const completedTaxMonths = storageService.getCompletedTaxMonths();
+        const avgAvailableFrom = storageService.getFirstAverageAvailableDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         const inTaxYear = storageService.getIncomeInTaxYear(incomeRecords);
-        const receivedCount = inTaxYear.filter(r => r.status === 'Received').length;
-        const pendingCount = inTaxYear.filter(r => r.status === 'Pending').length;
-        const overdueCount = inTaxYear.filter(r => r.status === 'Overdue').length;
+        const statusOf = (r) => storageService.normaliseIncomeStatus(r.status);
+        const receivedCount = inTaxYear.filter(r => statusOf(r) === INCOME_STATUS.RECEIVED).length;
+        const pendingCount = inTaxYear.filter(r => statusOf(r) === INCOME_STATUS.PENDING).length;
+        const overdueCount = inTaxYear.filter(r => statusOf(r) === INCOME_STATUS.OVERDUE).length;
         const incomeByMonth = storageService.getIncomeByMonth();
         const incomeBySource = storageService.getIncomeBySource();
 
@@ -350,11 +352,14 @@ function Dashboard() {
         const editingRecord = editingIncomeId ? storageService.getIncomeRecord(editingIncomeId) : null;
 
         const getStatusBadgeVariant = (status) => {
-          if (status === 'Received') return 'success';
-          if (status === 'Pending') return 'warning';
-          if (status === 'Overdue') return 'error';
+          const s = storageService.normaliseIncomeStatus(status);
+          if (s === INCOME_STATUS.RECEIVED) return 'success';
+          if (s === INCOME_STATUS.PENDING) return 'warning';
+          if (s === INCOME_STATUS.OVERDUE) return 'error';
           return 'default';
         };
+        const getStatusLabel = (status) =>
+          INCOME_STATUS_LABELS[storageService.normaliseIncomeStatus(status)] || status;
 
         const sortedRecords = [...incomeRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -389,10 +394,21 @@ function Dashboard() {
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Average per completed tax month</div>
-                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  £{avgMonthly.toFixed(2)}
-                </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Received ÷ {completedTaxMonths} completed tax month{completedTaxMonths === 1 ? '' : 's'}</div>
+                {avgMonthly === null ? (
+                  <>
+                    <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[400], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                      —
+                    </div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Available from {avgAvailableFrom}</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                      £{avgMonthly.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Received ÷ {completedTaxMonths} completed tax month{completedTaxMonths === 1 ? '' : 's'}</div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -453,7 +469,7 @@ function Dashboard() {
                             <td style={{ padding: "12px 16px" }}>{record.category}</td>
                             <td style={{ padding: "12px 16px", fontWeight: "600" }}>£{parseFloat(record.amount).toFixed(2)}</td>
                             <td style={{ padding: "12px 16px" }}>
-                              <Badge variant={getStatusBadgeVariant(record.status)}>{record.status}</Badge>
+                              <Badge variant={getStatusBadgeVariant(record.status)}>{getStatusLabel(record.status)}</Badge>
                             </td>
                             <td style={{ padding: "12px 16px" }}>
                               <div style={{ display: 'flex', gap: '8px' }}>
@@ -576,6 +592,7 @@ function Dashboard() {
         const thisMonth = storageService.calculateExpensesThisMonth();
         const avgMonthly = storageService.calculateAverageMonthlyExpenses();
         const completedTaxMonths = storageService.getCompletedTaxMonths();
+        const avgAvailableFrom = storageService.getFirstAverageAvailableDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         const expensesByMonth = storageService.getExpensesByMonth();
         const expensesByCategory = storageService.getExpensesByCategory();
 
@@ -640,10 +657,21 @@ function Dashboard() {
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Average per completed tax month</div>
-                <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  £{avgMonthly.toFixed(2)}
-                </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Total ÷ {completedTaxMonths} completed tax month{completedTaxMonths === 1 ? '' : 's'}</div>
+                {avgMonthly === null ? (
+                  <>
+                    <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[400], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                      —
+                    </div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Available from {avgAvailableFrom}</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                      £{avgMonthly.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Recorded expenses ÷ {completedTaxMonths} completed tax month{completedTaxMonths === 1 ? '' : 's'}</div>
+                  </>
+                )}
               </div>
             </div>
 

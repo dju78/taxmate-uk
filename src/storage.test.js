@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { storageService } from './storage';
+import { storageService, INCOME_STATUS } from './storage';
 
 // Helper: assert a Date matches given local calendar parts.
 const expectDate = (date, year, month1Indexed, day) => {
@@ -89,12 +89,20 @@ describe('isInActiveTaxYear (exclusive upper boundary)', () => {
   });
 });
 
-describe('getCompletedTaxMonths', () => {
-  it('returns 0 on the first day of the tax year', () => {
+describe('getCompletedTaxMonths (first-month boundaries)', () => {
+  it('returns 0 on 6 April (first day of the tax year)', () => {
     expect(storageService.getCompletedTaxMonths(new Date(2026, 3, 6))).toBe(0);
   });
 
-  it('returns 1 after one completed tax month', () => {
+  it('returns 0 on 30 April (still inside the first tax month)', () => {
+    expect(storageService.getCompletedTaxMonths(new Date(2026, 3, 30))).toBe(0);
+  });
+
+  it('returns 0 on 5 May (last day before the first tax month closes)', () => {
+    expect(storageService.getCompletedTaxMonths(new Date(2026, 4, 5))).toBe(0);
+  });
+
+  it('returns 1 on 6 May (first tax month complete)', () => {
     expect(storageService.getCompletedTaxMonths(new Date(2026, 4, 6))).toBe(1);
   });
 
@@ -104,6 +112,55 @@ describe('getCompletedTaxMonths', () => {
 
   it('returns 3 on 12 July 2026', () => {
     expect(storageService.getCompletedTaxMonths(new Date(2026, 6, 12))).toBe(3);
+  });
+
+  it('getFirstAverageAvailableDate is 6 May of the tax year', () => {
+    expectDate(storageService.getFirstAverageAvailableDate(new Date(2026, 3, 20)), 2026, 5, 6);
+  });
+});
+
+describe('average is unavailable (null) before the first tax month closes', () => {
+  const incomeRecords = [{ id: '1', date: '2026-04-10', amount: '1000', status: 'received' }];
+  const expenseRecords = [{ id: '1', date: '2026-04-10', amount: '89.99' }];
+
+  it('income average is null on 6 April', () => {
+    expect(storageService.calculateAverageMonthlyIncome(new Date(2026, 3, 6), incomeRecords)).toBeNull();
+  });
+
+  it('income average is null on 5 May', () => {
+    expect(storageService.calculateAverageMonthlyIncome(new Date(2026, 4, 5), incomeRecords)).toBeNull();
+  });
+
+  it('income average becomes a number on 6 May', () => {
+    expect(storageService.calculateAverageMonthlyIncome(new Date(2026, 4, 6), incomeRecords)).toBe(1000);
+  });
+
+  it('expense average is null on 30 April and a number on 6 May', () => {
+    expect(storageService.calculateAverageMonthlyExpenses(new Date(2026, 3, 30), expenseRecords)).toBeNull();
+    expect(storageService.calculateAverageMonthlyExpenses(new Date(2026, 4, 6), expenseRecords)).toBe(89.99);
+  });
+});
+
+describe('income status normalisation', () => {
+  const ref = new Date(2026, 6, 12); // 12 July 2026
+  const records = [
+    { id: '1', date: '2026-05-10', amount: '100', status: 'Received' },
+    { id: '2', date: '2026-05-11', amount: '200', status: 'received' },
+    { id: '3', date: '2026-05-12', amount: '400', status: 'RECEIVED' },
+    { id: '4', date: '2026-05-13', amount: '50', status: ' Pending ' },
+  ];
+
+  it('treats Received / received / RECEIVED as the same status', () => {
+    expect(storageService.calculateTotalReceived(ref, records)).toBe(700);
+  });
+
+  it('trims and lowercases surrounding whitespace/case for other statuses', () => {
+    expect(storageService.calculateOutstanding(ref, records)).toBe(50);
+  });
+
+  it('normaliseIncomeStatus maps variants to canonical constants', () => {
+    expect(storageService.normaliseIncomeStatus('  OverDUE ')).toBe(INCOME_STATUS.OVERDUE);
+    expect(storageService.normaliseIncomeStatus(undefined)).toBe('');
   });
 });
 
@@ -175,14 +232,32 @@ describe('expense metrics', () => {
 });
 
 describe('currency rounding', () => {
-  it('rounds floating-point sums to 2 decimal places', () => {
+  it('sums 0.10 + 0.20 exactly as 0.30 (integer-pence accumulation)', () => {
     const ref = new Date(2026, 6, 12);
     const records = [
       { id: '1', date: '2026-05-01', amount: '0.10', status: 'Received' },
       { id: '2', date: '2026-05-02', amount: '0.20', status: 'Received' },
     ];
-    // 0.1 + 0.2 = 0.30000000000000004 without rounding
+    // 0.1 + 0.2 = 0.30000000000000004 with naive float addition
     expect(storageService.calculateTotalReceived(ref, records)).toBe(0.3);
+  });
+
+  it('accumulates many 1p amounts without float drift', () => {
+    const ref = new Date(2026, 6, 12);
+    // 1001 records of £0.01 each = £10.01 exactly.
+    const records = Array.from({ length: 1001 }, (_, i) => ({
+      id: String(i),
+      date: '2026-05-01',
+      amount: '0.01',
+      status: 'Received',
+    }));
+    expect(storageService.calculateTotalReceived(ref, records)).toBe(10.01);
+  });
+
+  it('toPence converts pounds to integer pence', () => {
+    expect(storageService.toPence('89.99')).toBe(8999);
+    expect(storageService.toPence('0.1')).toBe(10);
+    expect(storageService.toPence('')).toBe(0);
   });
 
   it('roundCurrency collapses long decimals to 2dp', () => {

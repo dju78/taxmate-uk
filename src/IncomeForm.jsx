@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TOKENS } from './tokens';
 import { Button, Input, Alert } from './components';
+import { INCOME_STATUS, INCOME_STATUS_LABELS, INCOME_STATUS_OPTIONS } from './storage';
 
 export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -10,7 +11,7 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
       description: '',
       category: 'Client work',
       amount: '',
-      status: 'Received',
+      status: INCOME_STATUS.RECEIVED,
       notes: '',
     }
   );
@@ -19,7 +20,7 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [submitError, setSubmitError] = useState(null);
 
   const categories = ['Client work', 'Freelance', 'Passive income', 'Other'];
-  const statuses = ['Received', 'Pending', 'Overdue'];
+  const statuses = INCOME_STATUS_OPTIONS;
 
   const validateForm = () => {
     const newErrors = {};
@@ -226,7 +227,7 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
             }}
           >
             {statuses.map(status => (
-              <option key={status} value={status}>{status}</option>
+              <option key={status} value={status}>{INCOME_STATUS_LABELS[status]}</option>
             ))}
           </select>
           {errors.status && (
