@@ -77,6 +77,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
           </h2>
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
               background: 'none',
               border: 'none',
@@ -94,6 +95,73 @@ const Modal = ({ isOpen, onClose, children, title }) => {
   );
 };
 
+// Confirmation Dialog component
+const ConfirmDialog = ({ isOpen, onConfirm, onCancel, title, message, confirmText = 'Delete', cancelText = 'Cancel' }) => {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1001,
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '14px',
+        padding: '32px',
+        maxWidth: '400px',
+        width: '90%',
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+      }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '700', color: TOKENS.colors.neutral[900], marginBottom: '12px', fontFamily: 'Manrope, sans-serif' }}>
+          {title}
+        </h3>
+        <p style={{ fontSize: '14px', color: TOKENS.colors.neutral[600], marginBottom: '24px' }}>
+          {message}
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: TOKENS.colors.neutral[100],
+              color: TOKENS.colors.neutral[700],
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: TOKENS.colors.semantic.danger,
+              color: 'white',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App
 function Dashboard() {
   const [activeNav, setActiveNav] = useState("dashboard");
@@ -105,6 +173,8 @@ function Dashboard() {
   const [expenseRecords, setExpenseRecords] = useState(() => storageService.getExpenseRecords());
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: null, id: null });
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
@@ -247,12 +317,15 @@ function Dashboard() {
           try {
             if (editingIncomeId) {
               storageService.updateIncomeRecord(editingIncomeId, formData);
+              setSuccessMessage('Income record updated successfully');
             } else {
               storageService.addIncomeRecord(formData);
+              setSuccessMessage('Income record added successfully');
             }
             setIncomeRecords(storageService.getIncomeRecords());
             setShowIncomeModal(false);
             setEditingIncomeId(null);
+            setTimeout(() => setSuccessMessage(null), 3000);
           } catch (error) {
             console.error('Error saving income record:', error);
           }
@@ -264,14 +337,7 @@ function Dashboard() {
         };
 
         const handleDeleteIncome = (id) => {
-          if (window.confirm('Are you sure you want to delete this income record?')) {
-            try {
-              storageService.deleteIncomeRecord(id);
-              setIncomeRecords(storageService.getIncomeRecords());
-            } catch (error) {
-              console.error('Error deleting income record:', error);
-            }
-          }
+          setConfirmDialog({ isOpen: true, type: 'income', id });
         };
 
         const editingRecord = editingIncomeId ? storageService.getIncomeRecord(editingIncomeId) : null;
@@ -485,12 +551,15 @@ function Dashboard() {
           try {
             if (editingExpenseId) {
               storageService.updateExpenseRecord(editingExpenseId, formData);
+              setSuccessMessage('Expense record updated successfully');
             } else {
               storageService.addExpenseRecord(formData);
+              setSuccessMessage('Expense record added successfully');
             }
             setExpenseRecords(storageService.getExpenseRecords());
             setShowExpenseModal(false);
             setEditingExpenseId(null);
+            setTimeout(() => setSuccessMessage(null), 3000);
           } catch (error) {
             console.error('Error saving expense record:', error);
           }
@@ -502,14 +571,7 @@ function Dashboard() {
         };
 
         const handleDeleteExpense = (id) => {
-          if (window.confirm('Are you sure you want to delete this expense record?')) {
-            try {
-              storageService.deleteExpenseRecord(id);
-              setExpenseRecords(storageService.getExpenseRecords());
-            } catch (error) {
-              console.error('Error deleting expense record:', error);
-            }
-          }
+          setConfirmDialog({ isOpen: true, type: 'expense', id });
         };
 
         const editingRecord = editingExpenseId ? storageService.getExpenseRecord(editingExpenseId) : null;
@@ -876,6 +938,52 @@ function Dashboard() {
           {renderContent()}
         </div>
       </main>
+
+      {/* Success message */}
+      {successMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          backgroundColor: TOKENS.colors.green[500],
+          color: 'white',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '600',
+          zIndex: 2000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        }}>
+          ✓ {successMessage}
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Record"
+        message={confirmDialog.type === 'income' ? 'This income record will be permanently deleted. This action cannot be undone.' : 'This expense record will be permanently deleted. This action cannot be undone.'}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={() => {
+          try {
+            if (confirmDialog.type === 'income') {
+              storageService.deleteIncomeRecord(confirmDialog.id);
+              setIncomeRecords(storageService.getIncomeRecords());
+              setSuccessMessage('Income record deleted successfully');
+            } else if (confirmDialog.type === 'expense') {
+              storageService.deleteExpenseRecord(confirmDialog.id);
+              setExpenseRecords(storageService.getExpenseRecords());
+              setSuccessMessage('Expense record deleted successfully');
+            }
+            setTimeout(() => setSuccessMessage(null), 3000);
+          } catch (error) {
+            console.error('Error deleting record:', error);
+          }
+          setConfirmDialog({ isOpen: false, type: null, id: null });
+        }}
+        onCancel={() => setConfirmDialog({ isOpen: false, type: null, id: null })}
+      />
     </div>
   );
 }

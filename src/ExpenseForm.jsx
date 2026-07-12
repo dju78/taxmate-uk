@@ -88,10 +88,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Date */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="expense-date" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Date
           </label>
           <Input
+            id="expense-date"
             type="date"
             name="date"
             value={formData.date}
@@ -108,10 +109,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Merchant */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="expense-merchant" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Merchant or Vendor *
           </label>
           <Input
+            id="expense-merchant"
             type="text"
             name="merchant"
             placeholder="e.g., Amazon, Local Supplier"
@@ -151,10 +153,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Category */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="expense-category" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Category *
           </label>
           <select
+            id="expense-category"
             name="category"
             value={formData.category}
             onChange={handleChange}
@@ -181,10 +184,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Amount */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="expense-amount" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Amount (£) *
           </label>
           <Input
+            id="expense-amount"
             type="number"
             name="amount"
             placeholder="0.00"
@@ -203,10 +207,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Payment Method */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="expense-method" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Payment Method *
           </label>
           <select
+            id="expense-method"
             name="paymentMethod"
             value={formData.paymentMethod}
             onChange={handleChange}

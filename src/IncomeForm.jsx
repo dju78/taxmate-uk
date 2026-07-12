@@ -88,10 +88,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Date */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="income-date" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Date
           </label>
           <Input
+            id="income-date"
             type="date"
             name="date"
             value={formData.date}
@@ -108,10 +109,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Source */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="income-source" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Client or Income Source *
           </label>
           <Input
+            id="income-source"
             type="text"
             name="source"
             placeholder="e.g., Acme Corp, Freelance Project"
@@ -151,10 +153,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Category */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="income-category" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Category *
           </label>
           <select
+            id="income-category"
             name="category"
             value={formData.category}
             onChange={handleChange}
@@ -181,10 +184,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Amount */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="income-amount" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Amount (£) *
           </label>
           <Input
+            id="income-amount"
             type="number"
             name="amount"
             placeholder="0.00"
@@ -203,10 +207,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
         {/* Status */}
         <div>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
+          <label htmlFor="income-status" style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: TOKENS.colors.neutral[700], marginBottom: '4px' }}>
             Status *
           </label>
           <select
+            id="income-status"
             name="status"
             value={formData.status}
             onChange={handleChange}
