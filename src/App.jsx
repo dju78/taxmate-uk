@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TOKENS } from "./tokens";
 import { Alert, Switch, Button, Badge, EmptyState } from "./components";
 import { IncomeForm } from "./IncomeForm";
+import { ExpenseForm } from "./ExpenseForm";
 import { storageService } from "./storage";
 
 // SVG Icons
@@ -101,6 +102,9 @@ function Dashboard() {
   const [incomeRecords, setIncomeRecords] = useState(() => storageService.getIncomeRecords());
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
+  const [expenseRecords, setExpenseRecords] = useState(() => storageService.getExpenseRecords());
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
@@ -470,43 +474,233 @@ function Dashboard() {
         );
       }
 
-      case "expenses":
+      case "expenses": {
+        const totalYTD = storageService.calculateTotalExpensesYTD();
+        const thisMonth = storageService.calculateExpensesThisMonth();
+        const avgMonthly = storageService.calculateAverageMonthlyExpenses();
+        const expensesByMonth = storageService.getExpensesByMonth();
+        const expensesByCategory = storageService.getExpensesByCategory();
+
+        const handleSaveExpense = (formData) => {
+          try {
+            if (editingExpenseId) {
+              storageService.updateExpenseRecord(editingExpenseId, formData);
+            } else {
+              storageService.addExpenseRecord(formData);
+            }
+            setExpenseRecords(storageService.getExpenseRecords());
+            setShowExpenseModal(false);
+            setEditingExpenseId(null);
+          } catch (error) {
+            console.error('Error saving expense record:', error);
+          }
+        };
+
+        const handleEditExpense = (id) => {
+          setEditingExpenseId(id);
+          setShowExpenseModal(true);
+        };
+
+        const handleDeleteExpense = (id) => {
+          if (window.confirm('Are you sure you want to delete this expense record?')) {
+            try {
+              storageService.deleteExpenseRecord(id);
+              setExpenseRecords(storageService.getExpenseRecords());
+            } catch (error) {
+              console.error('Error deleting expense record:', error);
+            }
+          }
+        };
+
+        const editingRecord = editingExpenseId ? storageService.getExpenseRecord(editingExpenseId) : null;
+        const sortedRecords = [...expenseRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+
         return (
           <>
-            <div style={{ marginBottom: "32px" }}>
-              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
-                Expenses
-              </h1>
-              <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Log and categorize your business expenses</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
+              <div>
+                <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                  Expenses
+                </h1>
+                <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Log and categorize your business expenses</p>
+              </div>
+              <Button variant="primary" onClick={() => { setEditingExpenseId(null); setShowExpenseModal(true); }}>
+                + Add expense
+              </Button>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Total expenses YTD</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  £6,210
+                  £{totalYTD.toFixed(2)}
                 </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>18 receipts logged</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>{expenseRecords.length} receipts logged</div>
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>This month</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  £1,240
+                  £{thisMonth.toFixed(2)}
                 </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>12 entries</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>expenses this month</div>
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Average per month</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  £1,035
+                  £{avgMonthly.toFixed(2)}
                 </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Based on 6 months</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Based on {expenseRecords.length} records</div>
               </div>
             </div>
 
-            <Alert variant="info" title="💡 Tip" description="Keep receipts organized by category to speed up tax filing." />
+            {expenseRecords.length === 0 ? (
+              <EmptyState
+                icon="📝"
+                title="No expenses recorded yet"
+                description="Start tracking your business expenses to monitor spending and prepare for tax filing."
+                action="Add expense"
+              />
+            ) : (
+              <>
+                <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
+                  <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                    Expense History
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ borderBottom: `2px solid ${TOKENS.colors.neutral[200]}` }}>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Date</th>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Merchant</th>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Category</th>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Amount</th>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Method</th>
+                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedRecords.map((record) => (
+                          <tr key={record.id} style={{ borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
+                            <td style={{ padding: "12px 16px" }}>{new Date(record.date).toLocaleDateString()}</td>
+                            <td style={{ padding: "12px 16px" }}>{record.merchant}</td>
+                            <td style={{ padding: "12px 16px" }}>{record.category}</td>
+                            <td style={{ padding: "12px 16px", fontWeight: "600" }}>£{parseFloat(record.amount).toFixed(2)}</td>
+                            <td style={{ padding: "12px 16px" }}>{record.paymentMethod}</td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleEditExpense(record.id)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: TOKENS.colors.green[500],
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteExpense(record.id)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: TOKENS.colors.semantic.danger,
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {Object.keys(expensesByMonth).length > 0 && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px" }}>
+                    <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+                      <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                        Expense Trend
+                      </h3>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
+                        {Object.entries(expensesByMonth).sort().map(([month, amount]) => {
+                          const maxAmount = Math.max(...Object.values(expensesByMonth));
+                          const percentage = (amount / maxAmount) * 100;
+                          return (
+                            <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                              <div
+                                style={{
+                                  width: "100%",
+                                  backgroundColor: TOKENS.colors.green[500],
+                                  borderTopLeftRadius: "4px",
+                                  borderTopRightRadius: "4px",
+                                  height: `${percentage}%`,
+                                }}
+                                title={`£${amount.toFixed(2)}`}
+                              ></div>
+                              <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{month.slice(5)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {Object.keys(expensesByCategory).length > 0 && (
+                      <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+                        <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                          Expenses by Category
+                        </h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {Object.entries(expensesByCategory).map(([category, amount]) => {
+                            const total = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
+                            const percentage = (amount / total) * 100;
+                            return (
+                              <div key={category}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>{category}</span>
+                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900] }}>£{amount.toFixed(2)}</span>
+                                </div>
+                                <div style={{ height: "8px", backgroundColor: TOKENS.colors.neutral[200], borderRadius: "4px", overflow: "hidden" }}>
+                                  <div
+                                    style={{
+                                      height: "100%",
+                                      backgroundColor: TOKENS.colors.green[500],
+                                      width: `${percentage}%`,
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <Modal
+              isOpen={showExpenseModal}
+              onClose={() => { setShowExpenseModal(false); setEditingExpenseId(null); }}
+              title={editingExpenseId ? 'Edit Expense' : 'Add Expense'}
+            >
+              <ExpenseForm
+                initialData={editingRecord}
+                onSubmit={handleSaveExpense}
+                onCancel={() => { setShowExpenseModal(false); setEditingExpenseId(null); }}
+              />
+            </Modal>
           </>
         );
+      }
 
       case "tax":
         return (
