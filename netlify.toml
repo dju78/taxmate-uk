@@ -1,0 +1,32 @@
+# Netlify configuration for TaxMate UK (static SPA published from dist/).
+# Intentionally additive: no [build] section, so the existing publish pipeline
+# is unchanged. This file only layers on caching, security headers and an SPA
+# fallback.
+
+# Content-hashed assets never change for a given filename -> cache immutably.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The HTML shell must always be revalidated so new deploys are picked up.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Baseline security headers for every response.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+# SPA fallback: serve index.html for client-side navigation (future-proofing).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

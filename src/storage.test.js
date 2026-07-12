@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { storageService, INCOME_STATUS } from './storage';
+import { isValidAmount, isValidDateString } from './validation';
 
 // Helper: assert a Date matches given local calendar parts.
 const expectDate = (date, year, month1Indexed, day) => {
@@ -264,6 +265,54 @@ describe('currency rounding', () => {
     expect(storageService.roundCurrency(89.99 / 3)).toBe(30);
     expect(storageService.roundCurrency(10 / 3)).toBe(3.33);
     expect(storageService.roundCurrency(2 / 3)).toBe(0.67);
+  });
+});
+
+describe('input validation', () => {
+  it('isValidAmount accepts well-formed positive amounts', () => {
+    expect(isValidAmount('100')).toBe(true);
+    expect(isValidAmount('89.99')).toBe(true);
+    expect(isValidAmount('0.01')).toBe(true);
+  });
+
+  it('isValidAmount rejects malformed or non-positive amounts', () => {
+    expect(isValidAmount('100abc')).toBe(false); // must not be parsed as 100
+    expect(isValidAmount('1.999')).toBe(false);   // more than 2dp
+    expect(isValidAmount('-5')).toBe(false);
+    expect(isValidAmount('0')).toBe(false);
+    expect(isValidAmount('')).toBe(false);
+    expect(isValidAmount('  ')).toBe(false);
+    expect(isValidAmount('1e3')).toBe(false);
+  });
+
+  it('isValidDateString accepts real calendar dates', () => {
+    expect(isValidDateString('2026-07-12')).toBe(true);
+    expect(isValidDateString('2024-02-29')).toBe(true); // leap day
+  });
+
+  it('isValidDateString rejects impossible or malformed dates', () => {
+    expect(isValidDateString('2026-02-30')).toBe(false);
+    expect(isValidDateString('2026-13-01')).toBe(false);
+    expect(isValidDateString('2025-02-29')).toBe(false); // not a leap year
+    expect(isValidDateString('not-a-date')).toBe(false);
+    expect(isValidDateString('2026-7-12')).toBe(false); // needs zero-padding
+  });
+});
+
+describe('export helpers', () => {
+  it('recordsToCSV produces a header and escapes commas/quotes', () => {
+    const csv = storageService.recordsToCSV([
+      { id: '1', source: 'Acme, Inc', amount: '100' },
+      { id: '2', source: 'Say "hi"', amount: '50' },
+    ]);
+    const lines = csv.split('\n');
+    expect(lines[0]).toBe('id,source,amount');
+    expect(lines[1]).toBe('1,"Acme, Inc",100');
+    expect(lines[2]).toBe('2,"Say ""hi""",50');
+  });
+
+  it('recordsToCSV returns empty string for no records', () => {
+    expect(storageService.recordsToCSV([])).toBe('');
   });
 });
 

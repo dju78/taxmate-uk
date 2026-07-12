@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TOKENS } from "./tokens";
-import { Alert, Switch, Button, Badge, EmptyState } from "./components";
+import { Alert, Switch, Button, Badge, EmptyState, TransactionList } from "./components";
 import { IncomeForm } from "./IncomeForm";
 import { ExpenseForm } from "./ExpenseForm";
 import { storageService, INCOME_STATUS, INCOME_STATUS_LABELS } from "./storage";
+import { useBreakpoint, useDialog } from "./hooks";
 
 // SVG Icons
 const Icons = {
@@ -15,64 +16,85 @@ const Icons = {
       <rect x="3" y="14" width="7" height="7" />
     </svg>
   ),
+  // Wallet
   Income: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 1v22M17 5H9.5a4.5 4.5 0 0 0 0 9h5m0 0a4.5 4.5 0 0 0 0 9H6" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h16v-6" />
+      <path d="M18 12a2 2 0 0 0 0 4h4v-4z" />
     </svg>
   ),
+  // Receipt
   Expenses: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="1" />
-      <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z" />
+      <path d="M8 7h8M8 11h8M8 15h5" />
     </svg>
   ),
+  // Calculator
   Tax: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2" />
+      <rect x="8" y="6" width="8" height="3" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
     </svg>
   ),
+  // Cog
   Settings: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
+  // "TM" wordmark
   Logo: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
+    <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="TaxMate">
+      <text x="12" y="16" textAnchor="middle" fontSize="10" fontWeight="800" fill="white" fontFamily="Manrope, Inter, sans-serif" letterSpacing="0.5">TM</text>
     </svg>
   ),
 };
 
-// Modal component
+// Modal component (accessible dialog)
 const Modal = ({ isOpen, onClose, children, title }) => {
+  const dialogRef = useDialog(isOpen, onClose);
   if (!isOpen) return null;
+  const titleId = 'modal-title';
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '14px',
-        padding: '32px',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        maxWidth: '600px',
-        width: '90%',
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-      }}>
+    <div
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '16px',
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '14px',
+          padding: '32px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          maxWidth: '600px',
+          width: '100%',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: '700', color: TOKENS.colors.neutral[900], fontFamily: 'Manrope, sans-serif' }}>
+          <h2 id={titleId} style={{ fontSize: '22px', fontWeight: '700', color: TOKENS.colors.neutral[900], fontFamily: 'Manrope, sans-serif' }}>
             {title}
           </h2>
           <button
@@ -84,6 +106,7 @@ const Modal = ({ isOpen, onClose, children, title }) => {
               fontSize: '24px',
               cursor: 'pointer',
               color: TOKENS.colors.neutral[500],
+              lineHeight: 1,
             }}
           >
             ✕
@@ -95,34 +118,49 @@ const Modal = ({ isOpen, onClose, children, title }) => {
   );
 };
 
-// Confirmation Dialog component
+// Confirmation Dialog component (accessible alertdialog)
 const ConfirmDialog = ({ isOpen, onConfirm, onCancel, title, message, confirmText = 'Delete', cancelText = 'Cancel' }) => {
+  const dialogRef = useDialog(isOpen, onCancel);
   if (!isOpen) return null;
+  const titleId = 'confirm-title';
+  const msgId = 'confirm-message';
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1001,
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '14px',
-        padding: '32px',
-        maxWidth: '400px',
-        width: '90%',
-        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-      }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '700', color: TOKENS.colors.neutral[900], marginBottom: '12px', fontFamily: 'Manrope, sans-serif' }}>
+    <div
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1001,
+        padding: '16px',
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={msgId}
+        tabIndex={-1}
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '14px',
+          padding: '32px',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <h3 id={titleId} style={{ fontSize: '18px', fontWeight: '700', color: TOKENS.colors.neutral[900], marginBottom: '12px', fontFamily: 'Manrope, sans-serif' }}>
           {title}
         </h3>
-        <p style={{ fontSize: '14px', color: TOKENS.colors.neutral[600], marginBottom: '24px' }}>
+        <p id={msgId} style={{ fontSize: '14px', color: TOKENS.colors.neutral[600], marginBottom: '24px' }}>
           {message}
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -162,6 +200,26 @@ const ConfirmDialog = ({ isOpen, onConfirm, onCancel, title, message, confirmTex
   );
 };
 
+// Inline edit/delete actions for a transaction row
+const ActionLinks = ({ onEdit, onDelete, label }) => (
+  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+    <button
+      onClick={onEdit}
+      aria-label={`Edit ${label}`}
+      style={{ background: 'none', border: 'none', color: TOKENS.colors.green[500], cursor: 'pointer', fontSize: '14px', fontWeight: '600', padding: 0 }}
+    >
+      Edit
+    </button>
+    <button
+      onClick={onDelete}
+      aria-label={`Delete ${label}`}
+      style={{ background: 'none', border: 'none', color: TOKENS.colors.semantic.danger, cursor: 'pointer', fontSize: '14px', fontWeight: '600', padding: 0 }}
+    >
+      Delete
+    </button>
+  </div>
+);
+
 // Main App
 function Dashboard() {
   const [activeNav, setActiveNav] = useState("dashboard");
@@ -175,6 +233,40 @@ function Dashboard() {
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: null, id: null });
   const [successMessage, setSuccessMessage] = useState(null);
+  const [storageError] = useState(() => storageService.getStorageError());
+
+  useEffect(() => {
+    storageService.migrateIfNeeded();
+  }, []);
+
+  // Trigger a client-side file download.
+  const downloadFile = (filename, content, mime) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  const handleExportJSON = () => {
+    downloadFile(`taxmate-backup-${stamp()}.json`, JSON.stringify(storageService.getExportBundle(), null, 2), 'application/json');
+  };
+  const handleExportCSV = () => {
+    const income = storageService.recordsToCSV(storageService.getIncomeRecords());
+    const expenses = storageService.recordsToCSV(storageService.getExpenseRecords());
+    downloadFile(`taxmate-income-${stamp()}.csv`, income || 'No income records', 'text/csv');
+    downloadFile(`taxmate-expenses-${stamp()}.csv`, expenses || 'No expense records', 'text/csv');
+  };
+
+  const { isMobile, isTablet } = useBreakpoint();
+  // KPI grid columns per breakpoint (used across sections).
+  const kpiCols = isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(3, 1fr)";
+  const pageHeadingSize = isMobile ? "26px" : "36px";
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
@@ -191,7 +283,7 @@ function Dashboard() {
         const dateLabel = now
           .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })
           .toUpperCase();
-        const greeting = now.getHours() < 12 ? "Morning" : now.getHours() < 18 ? "Afternoon" : "Evening";
+        const greeting = now.getHours() < 12 ? "Good morning" : now.getHours() < 18 ? "Good afternoon" : "Good evening";
         const taxYearStart = storageService.getTaxYearStart();
         const taxYearLabel = `${taxYearStart.getFullYear()}/${String((taxYearStart.getFullYear() + 1) % 100).padStart(2, "0")}`;
 
@@ -219,18 +311,18 @@ function Dashboard() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
               <div>
                 <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[500], fontWeight: "600" }}>{dateLabel}</div>
-                <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                  {greeting}, Priya 👋
+                <h1 style={{ fontSize: pageHeadingSize, fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
+                  {greeting} 👋
                 </h1>
               </div>
               <div style={{ width: "40px", height: "40px", backgroundColor: TOKENS.colors.green[200], borderRadius: "50%" }}></div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginBottom: "24px" }}>
               <div style={{ backgroundColor: TOKENS.colors.green[500], color: "white", borderRadius: "14px", padding: "20px" }}>
-                <div style={{ fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>Net profit YTD</div>
+                <div style={{ fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>Recorded cash surplus</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>£{netProfitYTD.toFixed(2)}</div>
-                <div style={{ fontSize: "13px", opacity: 0.85, marginTop: "8px" }}>Received income − expenses · {taxYearLabel}</div>
+                <div style={{ fontSize: "13px", opacity: 0.85, marginTop: "8px" }}>Received income − all recorded expenses · {taxYearLabel}</div>
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Income received YTD</div>
@@ -248,7 +340,7 @@ function Dashboard() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
                 <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
                   Income vs expenses <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
@@ -315,6 +407,8 @@ function Dashboard() {
         const avgMonthly = storageService.calculateAverageMonthlyIncome();
         const completedTaxMonths = storageService.getCompletedTaxMonths();
         const avgAvailableFrom = storageService.getFirstAverageAvailableDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        const incomeTaxYearStart = storageService.getTaxYearStart();
+        const incomeTaxYearLabel = `${incomeTaxYearStart.getFullYear()}/${String((incomeTaxYearStart.getFullYear() + 1) % 100).padStart(2, "0")}`;
         const inTaxYear = storageService.getIncomeInTaxYear(incomeRecords);
         const statusOf = (r) => storageService.normaliseIncomeStatus(r.status);
         const receivedCount = inTaxYear.filter(r => statusOf(r) === INCOME_STATUS.RECEIVED).length;
@@ -362,13 +456,13 @@ function Dashboard() {
         const getStatusLabel = (status) =>
           INCOME_STATUS_LABELS[storageService.normaliseIncomeStatus(status)] || status;
 
-        const sortedRecords = [...incomeRecords].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
+        const sortedRecords = [...inTaxYear].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
 
         return (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
               <div>
-                <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                <h1 style={{ fontSize: pageHeadingSize, fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
                   Income
                 </h1>
                 <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Track and manage your income sources</p>
@@ -378,7 +472,7 @@ function Dashboard() {
               </Button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginBottom: "16px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Total received YTD</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
@@ -413,7 +507,7 @@ function Dashboard() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginBottom: "24px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Outstanding</div>
                 <div style={{ fontSize: "24px", fontWeight: "800", color: TOKENS.colors.semantic.warning, marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
@@ -437,80 +531,39 @@ function Dashboard() {
               </div>
             </div>
 
-            {incomeRecords.length === 0 ? (
+            {inTaxYear.length === 0 ? (
               <EmptyState
                 icon="📊"
-                title="No income records yet"
+                title="No income records for this tax year"
                 description="Start by adding your first income record to track your earnings."
-                action="Add income"
+                actionLabel="Add income"
+                onAction={() => { setEditingIncomeId(null); setShowIncomeModal(true); }}
               />
             ) : (
               <>
                 <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
                   <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                    Income History
+                    Income History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {incomeTaxYearLabel}</span>
                   </h3>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ borderBottom: `2px solid ${TOKENS.colors.neutral[200]}` }}>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Date</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Source</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Category</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Amount</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Status</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedRecords.map((record) => (
-                          <tr key={record.id} style={{ borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
-                            <td style={{ padding: "12px 16px" }}>{storageService.parseLocalDate(record.date).toLocaleDateString()}</td>
-                            <td style={{ padding: "12px 16px" }}>{record.source}</td>
-                            <td style={{ padding: "12px 16px" }}>{record.category}</td>
-                            <td style={{ padding: "12px 16px", fontWeight: "600" }}>£{parseFloat(record.amount).toFixed(2)}</td>
-                            <td style={{ padding: "12px 16px" }}>
-                              <Badge variant={getStatusBadgeVariant(record.status)}>{getStatusLabel(record.status)}</Badge>
-                            </td>
-                            <td style={{ padding: "12px 16px" }}>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  onClick={() => handleEditIncome(record.id)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: TOKENS.colors.green[500],
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteIncome(record.id)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: TOKENS.colors.semantic.danger,
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <TransactionList
+                    isMobile={isMobile}
+                    getKey={(r) => r.id}
+                    rows={sortedRecords}
+                    columns={[
+                      { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
+                      { key: "source", label: "Source", render: (r) => r.source },
+                      { key: "category", label: "Category", render: (r) => r.category },
+                      { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
+                      { key: "status", label: "Status", render: (r) => <Badge variant={getStatusBadgeVariant(r.status)}>{getStatusLabel(r.status)}</Badge> },
+                      { key: "actions", label: "Actions", align: "right", render: (r) => (
+                        <ActionLinks onEdit={() => handleEditIncome(r.id)} onDelete={() => handleDeleteIncome(r.id)} label={`income from ${r.source}`} />
+                      ) },
+                    ]}
+                  />
                 </div>
 
                 {Object.keys(incomeByMonth).length > 0 && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
                     <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
                       <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
                         Income Trend
@@ -596,6 +649,9 @@ function Dashboard() {
         const avgAvailableFrom = storageService.getFirstAverageAvailableDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         const expensesByMonth = storageService.getExpensesByMonth();
         const expensesByCategory = storageService.getExpensesByCategory();
+        const expenseTaxYearStart = storageService.getTaxYearStart();
+        const expenseTaxYearLabel = `${expenseTaxYearStart.getFullYear()}/${String((expenseTaxYearStart.getFullYear() + 1) % 100).padStart(2, "0")}`;
+        const expensesInTaxYear = storageService.getExpensesInTaxYear(expenseRecords);
 
         const handleSaveExpense = (formData) => {
           try {
@@ -625,13 +681,13 @@ function Dashboard() {
         };
 
         const editingRecord = editingExpenseId ? storageService.getExpenseRecord(editingExpenseId) : null;
-        const sortedRecords = [...expenseRecords].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
+        const sortedRecords = [...expensesInTaxYear].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
 
         return (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
               <div>
-                <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+                <h1 style={{ fontSize: pageHeadingSize, fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
                   Expenses
                 </h1>
                 <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Log and categorize your business expenses</p>
@@ -641,13 +697,13 @@ function Dashboard() {
               </Button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginBottom: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginBottom: "24px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Total expenses YTD</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
                   £{totalYTD.toFixed(2)}
                 </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>{expenseRecords.length} receipts logged</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>{expensesInTaxYear.length} receipt{expensesInTaxYear.length === 1 ? '' : 's'} logged</div>
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>This month</div>
@@ -676,78 +732,39 @@ function Dashboard() {
               </div>
             </div>
 
-            {expenseRecords.length === 0 ? (
+            {expensesInTaxYear.length === 0 ? (
               <EmptyState
                 icon="📝"
-                title="No expenses recorded yet"
+                title="No expenses for this tax year"
                 description="Start tracking your business expenses to monitor spending and prepare for tax filing."
-                action="Add expense"
+                actionLabel="Add expense"
+                onAction={() => { setEditingExpenseId(null); setShowExpenseModal(true); }}
               />
             ) : (
               <>
                 <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
                   <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                    Expense History
+                    Expense History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {expenseTaxYearLabel}</span>
                   </h3>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ borderBottom: `2px solid ${TOKENS.colors.neutral[200]}` }}>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Date</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Merchant</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Category</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Amount</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Method</th>
-                          <th style={{ textAlign: "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedRecords.map((record) => (
-                          <tr key={record.id} style={{ borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
-                            <td style={{ padding: "12px 16px" }}>{storageService.parseLocalDate(record.date).toLocaleDateString()}</td>
-                            <td style={{ padding: "12px 16px" }}>{record.merchant}</td>
-                            <td style={{ padding: "12px 16px" }}>{record.category}</td>
-                            <td style={{ padding: "12px 16px", fontWeight: "600" }}>£{parseFloat(record.amount).toFixed(2)}</td>
-                            <td style={{ padding: "12px 16px" }}>{record.paymentMethod}</td>
-                            <td style={{ padding: "12px 16px" }}>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                  onClick={() => handleEditExpense(record.id)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: TOKENS.colors.green[500],
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteExpense(record.id)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: TOKENS.colors.semantic.danger,
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <TransactionList
+                    isMobile={isMobile}
+                    getKey={(r) => r.id}
+                    rows={sortedRecords}
+                    columns={[
+                      { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
+                      { key: "merchant", label: "Merchant", render: (r) => r.merchant },
+                      { key: "category", label: "Category", render: (r) => r.category },
+                      { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
+                      { key: "method", label: "Method", render: (r) => r.paymentMethod },
+                      { key: "actions", label: "Actions", align: "right", render: (r) => (
+                        <ActionLinks onEdit={() => handleEditExpense(r.id)} onDelete={() => handleDeleteExpense(r.id)} label={`expense from ${r.merchant}`} />
+                      ) },
+                    ]}
+                  />
                 </div>
 
                 {Object.keys(expensesByMonth).length > 0 && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
                     <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
                       <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
                         Expense Trend
@@ -835,7 +852,7 @@ function Dashboard() {
         return (
           <>
             <div style={{ marginBottom: "32px" }}>
-              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+              <h1 style={{ fontSize: pageHeadingSize, fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
                 Tax estimate preview
               </h1>
               <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Figures below are drawn from your recorded transactions for {taxYearLabel}.</p>
@@ -847,7 +864,7 @@ function Dashboard() {
               description="A Self Assessment tax estimate needs tested UK tax rules (personal allowance, bands, Class 2/4 NICs) that are not implemented yet. The figures below are your actual recorded income and expenses — not a tax calculation."
             />
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginTop: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginTop: "24px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Income received</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
@@ -863,11 +880,11 @@ function Dashboard() {
                 <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Tax year {taxYearLabel}</div>
               </div>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
-                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Net profit (pre-tax)</div>
+                <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>Recorded cash surplus</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
                   £{netProfitYTD.toFixed(2)}
                 </div>
-                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Received income − expenses</div>
+                <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Received income − all recorded expenses</div>
               </div>
             </div>
           </>
@@ -878,7 +895,7 @@ function Dashboard() {
         return (
           <>
             <div style={{ marginBottom: "32px" }}>
-              <h1 style={{ fontSize: "36px", fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
+              <h1 style={{ fontSize: pageHeadingSize, fontWeight: "800", color: TOKENS.colors.neutral[900], fontFamily: "Manrope, sans-serif" }}>
                 Settings
               </h1>
               <p style={{ color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Manage your account preferences</p>
@@ -905,24 +922,43 @@ function Dashboard() {
             </div>
 
             <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-              <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                Preferences
-              </h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "18px", fontWeight: "700", fontFamily: "Manrope, sans-serif" }}>
+                  Preferences
+                </h2>
+                <Badge variant="default">Coming soon</Badge>
+              </div>
+              <p style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginBottom: "16px" }}>
+                These preferences are not yet active. There is no email or reporting service connected in this prototype.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", opacity: 0.6 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "16px", borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
                   <div>
                     <div style={{ fontWeight: "600", color: TOKENS.colors.neutral[900] }}>Email notifications</div>
                     <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "4px" }}>Receive tax deadline alerts</div>
                   </div>
-                  <Switch checked={notificationsEnabled} onChange={setNotificationsEnabled} />
+                  <Switch checked={notificationsEnabled} onChange={setNotificationsEnabled} disabled aria-label="Email notifications (coming soon)" />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontWeight: "600", color: TOKENS.colors.neutral[900] }}>Monthly reports</div>
                     <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "4px" }}>Get automatic summary emails</div>
                   </div>
-                  <Switch checked={monthlyReportsEnabled} onChange={setMonthlyReportsEnabled} />
+                  <Switch checked={monthlyReportsEnabled} onChange={setMonthlyReportsEnabled} disabled aria-label="Monthly reports (coming soon)" />
                 </div>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginTop: "24px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "8px", fontFamily: "Manrope, sans-serif" }}>
+                Data &amp; backup
+              </h2>
+              <p style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginBottom: "16px" }}>
+                Your records are stored only in this browser (localStorage). They are not sent to any server and may be lost if you clear your browser data or switch device. Export a backup regularly.
+              </p>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                <Button variant="secondary" onClick={handleExportJSON}>Export JSON backup</Button>
+                <Button variant="secondary" onClick={handleExportCSV}>Export CSV (income &amp; expenses)</Button>
               </div>
             </div>
           </>
@@ -933,64 +969,146 @@ function Dashboard() {
     }
   };
 
+  const railMode = isTablet; // icon-only sidebar on tablet
+  const sidebarWidth = railMode ? 76 : 220;
+
   return (
-    <div style={{ display: "flex", width: "100%", height: "100vh", backgroundColor: TOKENS.colors.neutral[50], fontFamily: "Inter, sans-serif" }}>
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: "220px",
-          flex: "0 0 220px",
-          backgroundColor: TOKENS.colors.neutral[900],
-          color: "white",
-          height: "100vh",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          borderRight: `1px solid ${TOKENS.colors.neutral[800]}`,
-        }}
-      >
-        {/* Logo */}
-        <div style={{ padding: "24px 18px", display: "flex", alignItems: "center", gap: "12px", borderBottom: `1px solid ${TOKENS.colors.neutral[800]}` }}>
-          <div style={{ width: "32px", height: "32px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", width: "100%", height: "100vh", backgroundColor: TOKENS.colors.neutral[50], fontFamily: "Inter, sans-serif" }}>
+      {/* Mobile top bar */}
+      {isMobile && (
+        <header style={{ flexShrink: 0, backgroundColor: TOKENS.colors.neutral[900], color: "white", display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px" }}>
+          <div style={{ width: "30px", height: "30px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icons.Logo />
           </div>
           <span style={{ fontWeight: "700", fontSize: "18px" }}>TaxMate</span>
-        </div>
+        </header>
+      )}
 
-        {/* Navigation */}
-        <nav style={{ flex: 1, padding: "24px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+      {/* Sidebar (desktop full / tablet icon rail) */}
+      {!isMobile && (
+        <aside
+          aria-label="Primary"
+          style={{
+            width: `${sidebarWidth}px`,
+            flex: `0 0 ${sidebarWidth}px`,
+            backgroundColor: TOKENS.colors.neutral[900],
+            color: "white",
+            height: "100vh",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            borderRight: `1px solid ${TOKENS.colors.neutral[800]}`,
+          }}
+        >
+          {/* Logo */}
+          <div style={{ padding: railMode ? "22px 0" : "24px 18px", display: "flex", alignItems: "center", justifyContent: railMode ? "center" : "flex-start", gap: "12px", borderBottom: `1px solid ${TOKENS.colors.neutral[800]}` }}>
+            <div style={{ width: "32px", height: "32px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icons.Logo />
+            </div>
+            {!railMode && <span style={{ fontWeight: "700", fontSize: "18px" }}>TaxMate</span>}
+          </div>
+
+          {/* Navigation */}
+          <nav style={{ flex: 1, padding: railMode ? "16px 10px" : "24px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveNav(item.id)}
+                aria-current={activeNav === item.id ? "page" : undefined}
+                aria-label={railMode ? item.label : undefined}
+                title={railMode ? item.label : undefined}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: railMode ? "center" : "flex-start",
+                  gap: "12px",
+                  padding: railMode ? "12px 0" : "12px 16px",
+                  borderRadius: "9px",
+                  border: "none",
+                  backgroundColor: activeNav === item.id ? TOKENS.colors.green[500] : "transparent",
+                  color: activeNav === item.id ? "white" : TOKENS.colors.neutral[400],
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  fontFamily: "Inter, sans-serif",
+                }}
+                onMouseEnter={(e) => {
+                  if (activeNav !== item.id) {
+                    e.currentTarget.style.backgroundColor = TOKENS.colors.neutral[800];
+                    e.currentTarget.style.color = "white";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeNav !== item.id) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = TOKENS.colors.neutral[400];
+                  }
+                }}
+              >
+                <item.Icon />
+                {!railMode && <span>{item.label}</span>}
+              </button>
+            ))}
+          </nav>
+
+          {/* Footer */}
+          {!railMode && (
+            <div style={{ padding: "24px 16px", borderTop: `1px solid ${TOKENS.colors.neutral[800]}`, fontSize: "12px", color: TOKENS.colors.neutral[500] }}>
+              <p>© 2026 Daramola Digital Labs.</p>
+              <p style={{ marginTop: "8px" }}>TaxMate UK is a product of Daramola Digital Labs.</p>
+            </div>
+          )}
+        </aside>
+      )}
+
+      {/* Main content */}
+      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50], paddingBottom: isMobile ? "72px" : 0 }}>
+        <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 36px", boxSizing: "border-box" }}>
+          {storageError && (
+            <div style={{ marginBottom: "24px" }}>
+              <Alert variant="error" title="Storage problem detected" description={`${storageError} Use Settings → Data & backup to export what remains.`} />
+            </div>
+          )}
+          {renderContent()}
+        </div>
+      </main>
+
+      {/* Mobile bottom navigation */}
+      {isMobile && (
+        <nav
+          aria-label="Primary"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            display: "flex",
+            backgroundColor: TOKENS.colors.neutral[900],
+            borderTop: `1px solid ${TOKENS.colors.neutral[800]}`,
+            zIndex: 900,
+          }}
+        >
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveNav(item.id)}
               aria-current={activeNav === item.id ? "page" : undefined}
               style={{
-                width: "100%",
+                flex: 1,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: "12px",
-                padding: "12px 16px",
-                borderRadius: "9px",
+                gap: "3px",
+                padding: "8px 2px",
                 border: "none",
-                backgroundColor: activeNav === item.id ? TOKENS.colors.green[500] : "transparent",
-                color: activeNav === item.id ? "white" : TOKENS.colors.neutral[400],
+                background: "none",
+                color: activeNav === item.id ? TOKENS.colors.green[500] : TOKENS.colors.neutral[400],
                 cursor: "pointer",
-                transition: "all 0.2s ease",
-                fontSize: "14px",
-                fontWeight: "500",
+                fontSize: "10px",
+                fontWeight: "600",
                 fontFamily: "Inter, sans-serif",
-              }}
-              onMouseEnter={(e) => {
-                if (activeNav !== item.id) {
-                  e.target.style.backgroundColor = TOKENS.colors.neutral[800];
-                  e.target.style.color = "white";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeNav !== item.id) {
-                  e.target.style.backgroundColor = "transparent";
-                  e.target.style.color = TOKENS.colors.neutral[400];
-                }
               }}
             >
               <item.Icon />
@@ -998,20 +1116,7 @@ function Dashboard() {
             </button>
           ))}
         </nav>
-
-        {/* Footer */}
-        <div style={{ padding: "24px 16px", borderTop: `1px solid ${TOKENS.colors.neutral[800]}`, fontSize: "12px", color: TOKENS.colors.neutral[500] }}>
-          <p>© 2026 Daramola Digital Labs.</p>
-          <p style={{ marginTop: "8px" }}>TaxMate UK is a product of Daramola Digital Labs.</p>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50] }}>
-        <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: "32px 36px", boxSizing: "border-box" }}>
-          {renderContent()}
-        </div>
-      </main>
+      )}
 
       {/* Success message */}
       {successMessage && (

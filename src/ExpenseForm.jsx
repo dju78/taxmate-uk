@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TOKENS } from './tokens';
 import { Button, Input, Alert } from './components';
+import { isValidAmount, isValidDateString } from './validation';
 
 export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -26,6 +27,8 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
     if (!formData.date) {
       newErrors.date = 'Date is required';
+    } else if (!isValidDateString(formData.date)) {
+      newErrors.date = 'Enter a valid calendar date';
     }
 
     if (!formData.merchant.trim()) {
@@ -38,8 +41,8 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
 
     if (!formData.amount) {
       newErrors.amount = 'Amount is required';
-    } else if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = 'Amount must be greater than zero';
+    } else if (!isValidAmount(formData.amount)) {
+      newErrors.amount = 'Enter an amount greater than zero (up to 2 decimal places)';
     }
 
     if (!formData.paymentMethod) {
@@ -98,10 +101,12 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
             value={formData.date}
             onChange={handleChange}
             error={!!errors.date}
+            aria-invalid={!!errors.date}
+            aria-describedby={errors.date ? 'expense-date-error' : undefined}
             style={{ borderColor: errors.date ? TOKENS.colors.semantic.danger : undefined }}
           />
           {errors.date && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="expense-date-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.date}
             </div>
           )}
@@ -120,9 +125,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
             value={formData.merchant}
             onChange={handleChange}
             error={!!errors.merchant}
+            aria-invalid={!!errors.merchant}
+            aria-describedby={errors.merchant ? 'expense-merchant-error' : undefined}
           />
           {errors.merchant && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="expense-merchant-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.merchant}
             </div>
           )}
@@ -197,9 +204,11 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
             step="0.01"
             min="0"
             error={!!errors.amount}
+            aria-invalid={!!errors.amount}
+            aria-describedby={errors.amount ? 'expense-amount-error' : undefined}
           />
           {errors.amount && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="expense-amount-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.amount}
             </div>
           )}

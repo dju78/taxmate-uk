@@ -32,7 +32,106 @@ export const INCOME_STATUS_OPTIONS = [
 
 export const INCOME_STATUS_VALUES = Object.values(INCOME_STATUS);
 
+// Persistence schema version. Bump when the stored record shape changes and add
+// a migration step in migrateIfNeeded().
+export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION_KEY = 'taxmate_schema_version';
+const STORAGE_ERROR_KEY = 'taxmate_storage_error';
+
+// Generate a collision-resistant id. Prefer crypto.randomUUID; fall back for
+// environments without it.
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+// Read a JSON array from storage. On corruption, preserve the raw value under a
+// timestamped backup key and record a visible error rather than silently
+// discarding the user's data.
+const readCollection = (key) => {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Stored value is not an array');
+    return parsed;
+  } catch (error) {
+    console.error(`Corrupted data in ${key}:`, error);
+    try {
+      if (raw != null) localStorage.setItem(`${key}_backup_${Date.now()}`, raw);
+      localStorage.setItem(
+        STORAGE_ERROR_KEY,
+        `Some saved data in "${key}" could not be read and was backed up. Export a backup and check your records.`
+      );
+    } catch {
+      // ignore secondary storage failures
+    }
+    return [];
+  }
+};
+
 export const storageService = {
+  // ---------------------------------------------------------------------------
+  // Schema / storage health
+  // ---------------------------------------------------------------------------
+
+  migrateIfNeeded: () => {
+    try {
+      const stored = Number(localStorage.getItem(SCHEMA_VERSION_KEY));
+      if (!stored) {
+        localStorage.setItem(SCHEMA_VERSION_KEY, String(SCHEMA_VERSION));
+      }
+      // Future migrations: if (stored < 2) { ...transform...; set version }
+    } catch {
+      // ignore
+    }
+  },
+
+  getStorageError: () => {
+    try {
+      return localStorage.getItem(STORAGE_ERROR_KEY);
+    } catch {
+      return null;
+    }
+  },
+
+  clearStorageError: () => {
+    try {
+      localStorage.removeItem(STORAGE_ERROR_KEY);
+    } catch {
+      // ignore
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Export / backup
+  // ---------------------------------------------------------------------------
+
+  getExportBundle: () => ({
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    income: storageService.getIncomeRecords(),
+    expenses: storageService.getExpenseRecords(),
+  }),
+
+  recordsToCSV: (records) => {
+    if (!records || records.length === 0) return '';
+    const keys = Array.from(records.reduce((set, r) => {
+      Object.keys(r).forEach((k) => set.add(k));
+      return set;
+    }, new Set()));
+    const escape = (v) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = keys.join(',');
+    const lines = records.map((r) => keys.map((k) => escape(r[k])).join(','));
+    return [header, ...lines].join('\n');
+  },
+
   // ---------------------------------------------------------------------------
   // Normalisation / validation helpers
   // ---------------------------------------------------------------------------
@@ -147,15 +246,7 @@ export const storageService = {
   // Income records
   // ---------------------------------------------------------------------------
 
-  getIncomeRecords: () => {
-    try {
-      const data = localStorage.getItem(INCOME_STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error reading income records:', error);
-      return [];
-    }
-  },
+  getIncomeRecords: () => readCollection(INCOME_STORAGE_KEY),
 
   addIncomeRecord: (record) => {
     try {
@@ -165,7 +256,7 @@ export const storageService = {
       }
       const records = storageService.getIncomeRecords();
       const newRecord = {
-        id: Date.now().toString(),
+        id: generateId(),
         ...record,
         status,
         createdAt: new Date().toISOString(),
@@ -348,21 +439,13 @@ export const storageService = {
   // them requires new fields and is tracked as follow-up work.
   // ---------------------------------------------------------------------------
 
-  getExpenseRecords: () => {
-    try {
-      const data = localStorage.getItem(EXPENSE_STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error reading expense records:', error);
-      return [];
-    }
-  },
+  getExpenseRecords: () => readCollection(EXPENSE_STORAGE_KEY),
 
   addExpenseRecord: (record) => {
     try {
       const records = storageService.getExpenseRecords();
       const newRecord = {
-        id: Date.now().toString(),
+        id: generateId(),
         ...record,
         createdAt: new Date().toISOString(),
       };

@@ -1,7 +1,7 @@
 import { TOKENS } from "./tokens";
 
 // Button component - reusable design system component
-export const Button = ({ variant = "primary", disabled = false, children, onClick, type = "button" }) => {
+export const Button = ({ variant = "primary", disabled = false, children, onClick, type = "button", "aria-label": ariaLabel, style }) => {
   const baseStyles = {
     padding: "12px 24px",
     borderRadius: "8px",
@@ -11,7 +11,7 @@ export const Button = ({ variant = "primary", disabled = false, children, onClic
     fontSize: "16px",
     fontFamily: "Inter, sans-serif",
     transition: "all 0.2s ease",
-    outline: "none",
+    opacity: disabled ? 0.6 : 1,
   };
 
   const variantStyles = {
@@ -37,7 +37,8 @@ export const Button = ({ variant = "primary", disabled = false, children, onClic
   return (
     <button
       type={type}
-      style={{ ...baseStyles, ...variantStyles[variant] }}
+      aria-label={ariaLabel}
+      style={{ ...baseStyles, ...variantStyles[variant], ...style }}
       disabled={disabled}
       onClick={onClick}
     >
@@ -153,25 +154,94 @@ export const Table = ({ columns, rows }) => (
   </div>
 );
 
+// Transaction list - responsive table (desktop/tablet) / stacked cards (mobile)
+// columns: [{ key, label, render(row), align? }]
+export const TransactionList = ({ isMobile, columns, rows, getKey }) => {
+  if (isMobile) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {rows.map((row) => (
+          <div
+            key={getKey(row)}
+            style={{
+              border: `1px solid ${TOKENS.colors.neutral[200]}`,
+              borderRadius: "12px",
+              padding: "14px 16px",
+            }}
+          >
+            {columns.map((col) => (
+              <div
+                key={col.key}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "5px 0",
+                }}
+              >
+                <span style={{ fontSize: "12px", fontWeight: "600", color: TOKENS.colors.neutral[500] }}>{col.label}</span>
+                <span style={{ fontSize: "14px", color: TOKENS.colors.neutral[900], textAlign: "right" }}>{col.render(row)}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ borderBottom: `2px solid ${TOKENS.colors.neutral[200]}` }}>
+            {columns.map((col) => (
+              <th key={col.key} style={{ textAlign: col.align || "left", padding: "12px 16px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>
+                {col.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={getKey(row)} style={{ borderBottom: `1px solid ${TOKENS.colors.neutral[200]}` }}>
+              {columns.map((col) => (
+                <td key={col.key} style={{ padding: "12px 16px", textAlign: col.align || "left" }}>
+                  {col.render(row)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // Empty state component - reusable design system component
-export const EmptyState = ({ icon, title, description, action }) => (
-  <div style={{ textAlign: "center", padding: "48px 16px" }}>
-    <div style={{ fontSize: "56px", marginBottom: "16px" }}>{icon}</div>
-    <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px", color: TOKENS.colors.neutral[900] }}>
-      {title}
-    </h3>
-    <p style={{ color: TOKENS.colors.neutral[600], marginBottom: "24px" }}>
-      {description}
-    </p>
-    {action && <Button variant="primary">{action}</Button>}
-  </div>
-);
+export const EmptyState = ({ icon, title, description, action, actionLabel, onAction }) => {
+  const label = actionLabel || action;
+  return (
+    <div style={{ textAlign: "center", padding: "48px 16px" }}>
+      <div style={{ fontSize: "56px", marginBottom: "16px" }} aria-hidden="true">{icon}</div>
+      <h3 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px", color: TOKENS.colors.neutral[900] }}>
+        {title}
+      </h3>
+      <p style={{ color: TOKENS.colors.neutral[600], marginBottom: "24px" }}>
+        {description}
+      </p>
+      {label && onAction && (
+        <Button variant="primary" onClick={onAction}>{label}</Button>
+      )}
+    </div>
+  );
+};
 
 // Functional Switch component
-export const Switch = ({ checked, onChange, disabled = false }) => (
+export const Switch = ({ checked, onChange, disabled = false, "aria-label": ariaLabel }) => (
   <button
     role="switch"
     aria-checked={checked}
+    aria-label={ariaLabel}
     disabled={disabled}
     onClick={() => onChange(!checked)}
     style={{

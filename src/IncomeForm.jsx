@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TOKENS } from './tokens';
 import { Button, Input, Alert } from './components';
 import { INCOME_STATUS, INCOME_STATUS_LABELS, INCOME_STATUS_OPTIONS } from './storage';
+import { isValidAmount, isValidDateString } from './validation';
 
 export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -27,6 +28,8 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
     if (!formData.date) {
       newErrors.date = 'Date is required';
+    } else if (!isValidDateString(formData.date)) {
+      newErrors.date = 'Enter a valid calendar date';
     }
 
     if (!formData.source.trim()) {
@@ -39,8 +42,8 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
 
     if (!formData.amount) {
       newErrors.amount = 'Amount is required';
-    } else if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = 'Amount must be greater than zero';
+    } else if (!isValidAmount(formData.amount)) {
+      newErrors.amount = 'Enter an amount greater than zero (up to 2 decimal places)';
     }
 
     if (!formData.status) {
@@ -99,10 +102,12 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
             value={formData.date}
             onChange={handleChange}
             error={!!errors.date}
+            aria-invalid={!!errors.date}
+            aria-describedby={errors.date ? 'income-date-error' : undefined}
             style={{ borderColor: errors.date ? TOKENS.colors.semantic.danger : undefined }}
           />
           {errors.date && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="income-date-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.date}
             </div>
           )}
@@ -121,9 +126,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
             value={formData.source}
             onChange={handleChange}
             error={!!errors.source}
+            aria-invalid={!!errors.source}
+            aria-describedby={errors.source ? 'income-source-error' : undefined}
           />
           {errors.source && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="income-source-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.source}
             </div>
           )}
@@ -198,9 +205,11 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }) => {
             step="0.01"
             min="0"
             error={!!errors.amount}
+            aria-invalid={!!errors.amount}
+            aria-describedby={errors.amount ? 'income-amount-error' : undefined}
           />
           {errors.amount && (
-            <div style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
+            <div id="income-amount-error" role="alert" style={{ fontSize: '13px', color: TOKENS.colors.semantic.danger, marginTop: '4px' }}>
               {errors.amount}
             </div>
           )}
