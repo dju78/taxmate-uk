@@ -2,7 +2,7 @@
 
 // A valid money amount: a non-negative decimal with up to 2 places, greater
 // than zero. Rejects values like "100abc", "1e3", " ", "-5", "1.999".
-export const isValidAmount = (value) => {
+export const isValidAmount = (value: unknown): boolean => {
   if (typeof value !== 'string' && typeof value !== 'number') return false;
   const s = String(value).trim();
   if (!/^\d+(\.\d{1,2})?$/.test(s)) return false;
@@ -10,7 +10,7 @@ export const isValidAmount = (value) => {
 };
 
 // A valid YYYY-MM-DD calendar date (rejects "2026-02-30", "2026-13-01", etc.).
-export const isValidDateString = (value) => {
+export const isValidDateString = (value: unknown): boolean => {
   if (typeof value !== 'string') return false;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!m) return false;

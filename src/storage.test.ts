@@ -3,7 +3,7 @@ import { storageService, INCOME_STATUS } from './storage';
 import { isValidAmount, isValidDateString } from './validation';
 
 // Helper: assert a Date matches given local calendar parts.
-const expectDate = (date, year, month1Indexed, day) => {
+const expectDate = (date: Date, year: number, month1Indexed: number, day: number) => {
   expect(date.getFullYear()).toBe(year);
   expect(date.getMonth()).toBe(month1Indexed - 1);
   expect(date.getDate()).toBe(day);

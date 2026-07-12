@@ -47,4 +47,4 @@ export const TOKENS = {
   focus: {
     outline: "0 0 0 3px rgba(58, 162, 90, 0.25)",
   },
-};
+} as const;
