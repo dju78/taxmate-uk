@@ -57,12 +57,14 @@ export interface ExpenseCalcRecord {
 
 export interface ExportPreferences {
   selectedTaxYear?: number;
+  [key: string]: unknown;
 }
 
+// Approved backup schema.
 export interface ExportBundle {
   schemaVersion: number;
-  exportedAt: string;
-  preferences?: ExportPreferences;
-  income: IncomeRecord[];
-  expenses: ExpenseRecord[];
+  exportDate: string;
+  appPreferences: ExportPreferences;
+  incomeRecords: IncomeRecord[];
+  expenseRecords: ExpenseRecord[];
 }

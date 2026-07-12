@@ -1099,7 +1099,7 @@ function Dashboard() {
 
       {/* Success message */}
       {successMessage && (
-        <div style={{
+        <div role="status" aria-live="polite" style={{
           position: 'fixed',
           top: '20px',
           right: '20px',

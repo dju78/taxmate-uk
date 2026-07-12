@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { storageService } from './storage';
-import type { IncomeRecord, ExpenseRecord } from './types';
+import { storageService, SELECTED_TAX_YEAR_KEY } from './storage';
+import type { IncomeRecord, ExpenseRecord, ExportPreferences } from './types';
 
 // A tax year is represented by its START calendar year (e.g. 2026 => 2026/27).
 export const taxYearStartToLabel = (startYear: number): string =>
@@ -26,11 +26,9 @@ export const taxYearReferenceDate = (startYear: number): Date => {
   return new Date(startYear, 5, 1); // 1 June of the start year — safely inside 6 Apr–5 Apr
 };
 
-const SELECTED_YEAR_KEY = 'taxmate_selected_tax_year';
-
 const loadSelectedYear = (): number => {
   try {
-    const v = Number(localStorage.getItem(SELECTED_YEAR_KEY));
+    const v = Number(localStorage.getItem(SELECTED_TAX_YEAR_KEY));
     if (v && Number.isFinite(v)) return v;
   } catch {
     // ignore
@@ -53,7 +51,12 @@ export interface TaxStore {
   loadDemo: () => { income: number; expenses: number };
   removeDemo: () => { income: number; expenses: number };
   clearAll: () => void;
-  importData: (income: IncomeRecord[], expenses: ExpenseRecord[]) => { income: number; expenses: number };
+  mergeImport: (income: IncomeRecord[], expenses: ExpenseRecord[]) => { income: number; expenses: number };
+  restoreImport: (
+    income: IncomeRecord[],
+    expenses: ExpenseRecord[],
+    preferences: ExportPreferences
+  ) => { income: number; expenses: number };
 }
 
 export const useTaxStore = create<TaxStore>((set, get) => ({
@@ -67,7 +70,7 @@ export const useTaxStore = create<TaxStore>((set, get) => ({
     }),
   setSelectedTaxYear: (year) => {
     try {
-      localStorage.setItem(SELECTED_YEAR_KEY, String(year));
+      localStorage.setItem(SELECTED_TAX_YEAR_KEY, String(year));
     } catch {
       // ignore
     }
@@ -98,7 +101,8 @@ export const useTaxStore = create<TaxStore>((set, get) => ({
     get().refresh();
   },
   loadDemo: () => {
-    const result = storageService.loadDemoData();
+    // Demo records are dated in the SELECTED tax year so they appear in view.
+    const result = storageService.loadDemoData(get().selectedTaxYear);
     get().refresh();
     return result;
   },
@@ -109,10 +113,22 @@ export const useTaxStore = create<TaxStore>((set, get) => ({
   },
   clearAll: () => {
     storageService.clearAllData();
+    // A full reset also clears the persisted selected year -> back to default.
+    set({ selectedTaxYear: currentTaxYearStart() });
     get().refresh();
   },
-  importData: (income, expenses) => {
-    const result = storageService.applyImport(income, expenses);
+  mergeImport: (income, expenses) => {
+    const result = storageService.applyMerge(income, expenses);
+    get().refresh();
+    return result;
+  },
+  restoreImport: (income, expenses, preferences) => {
+    const result = storageService.applyRestore(income, expenses);
+    // Restore preferences too (e.g. the selected tax year).
+    const pref = preferences?.selectedTaxYear;
+    if (typeof pref === 'number' && Number.isFinite(pref)) {
+      get().setSelectedTaxYear(pref);
+    }
     get().refresh();
     return result;
   },
