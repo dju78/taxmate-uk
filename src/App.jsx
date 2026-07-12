@@ -10,6 +10,8 @@ import { TaxYearSelector } from "./TaxYearSelector";
 import { AddTransactionButton } from "./AddTransactionButton";
 import { StorageNoticeBanner } from "./StorageNoticeBanner";
 import { DataAndBackup } from "./DataAndBackup";
+import { IncomeFilters, ExpenseFilters } from "./FilterBar";
+import { defaultIncomeFilters, defaultExpenseFilters, filterIncomeRecords, filterExpenseRecords, uniqueSorted } from "./filters";
 
 // SVG Icons
 const Icons = {
@@ -237,6 +239,8 @@ function Dashboard() {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, type: null, id: null });
   const [successMessage, setSuccessMessage] = useState(null);
   const [storageError] = useState(() => storageService.getStorageError());
+  const [incomeFilters, setIncomeFilters] = useState(defaultIncomeFilters);
+  const [expenseFilters, setExpenseFilters] = useState(defaultExpenseFilters);
 
   // Records + selected tax year live in the Zustand store (single source of truth).
   const incomeRecords = useTaxStore((s) => s.income);
@@ -470,7 +474,10 @@ function Dashboard() {
         const getStatusLabel = (status) =>
           INCOME_STATUS_LABELS[storageService.normaliseIncomeStatus(status)] || status;
 
-        const sortedRecords = [...inTaxYear].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
+        const incomeSourceOptions = uniqueSorted(inTaxYear.map((r) => r.source));
+        const incomeCategoryOptions = uniqueSorted(inTaxYear.map((r) => r.category));
+        const filteredIncome = filterIncomeRecords(inTaxYear, incomeFilters);
+        const sortedRecords = [...filteredIncome].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
 
         return (
           <>
@@ -556,26 +563,42 @@ function Dashboard() {
             ) : (
               <>
                 <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
-                  <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                    Income History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {incomeTaxYearLabel}</span>
-                  </h3>
-                  <TransactionList
-                    isMobile={isMobile}
-                    getKey={(r) => r.id}
-                    rows={sortedRecords}
-                    columns={[
-                      { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
-                      { key: "source", label: "Source", render: (r) => (
-                        <span>{r.source}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
-                      ) },
-                      { key: "category", label: "Category", render: (r) => r.category },
-                      { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
-                      { key: "status", label: "Status", render: (r) => <Badge variant={getStatusBadgeVariant(r.status)}>{getStatusLabel(r.status)}</Badge> },
-                      { key: "actions", label: "Actions", align: "right", render: (r) => (
-                        <ActionLinks onEdit={() => handleEditIncome(r.id)} onDelete={() => handleDeleteIncome(r.id)} label={`income from ${r.source}`} />
-                      ) },
-                    ]}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", fontFamily: "Manrope, sans-serif" }}>
+                      Income History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {incomeTaxYearLabel}</span>
+                    </h3>
+                    <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[500] }}>Showing {filteredIncome.length} of {inTaxYear.length}</span>
+                  </div>
+                  <IncomeFilters
+                    filters={incomeFilters}
+                    onChange={(patch) => setIncomeFilters((prev) => ({ ...prev, ...patch }))}
+                    onReset={() => setIncomeFilters(defaultIncomeFilters)}
+                    sources={incomeSourceOptions}
+                    categories={incomeCategoryOptions}
                   />
+                  {filteredIncome.length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: TOKENS.colors.neutral[600] }}>
+                      No income records match your filters.
+                    </div>
+                  ) : (
+                    <TransactionList
+                      isMobile={isMobile}
+                      getKey={(r) => r.id}
+                      rows={sortedRecords}
+                      columns={[
+                        { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
+                        { key: "source", label: "Source", render: (r) => (
+                          <span>{r.source}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
+                        ) },
+                        { key: "category", label: "Category", render: (r) => r.category },
+                        { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
+                        { key: "status", label: "Status", render: (r) => <Badge variant={getStatusBadgeVariant(r.status)}>{getStatusLabel(r.status)}</Badge> },
+                        { key: "actions", label: "Actions", align: "right", render: (r) => (
+                          <ActionLinks onEdit={() => handleEditIncome(r.id)} onDelete={() => handleDeleteIncome(r.id)} label={`income from ${r.source}`} />
+                        ) },
+                      ]}
+                    />
+                  )}
                 </div>
 
                 {Object.keys(incomeByMonth).length > 0 && (
@@ -668,7 +691,9 @@ function Dashboard() {
           setConfirmDialog({ isOpen: true, type: 'expense', id });
         };
 
-        const sortedRecords = [...expensesInTaxYear].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
+        const expenseCategoryOptions = uniqueSorted(expensesInTaxYear.map((r) => r.category));
+        const filteredExpenses = filterExpenseRecords(expensesInTaxYear, expenseFilters);
+        const sortedRecords = [...filteredExpenses].sort((a, b) => storageService.parseLocalDate(b.date) - storageService.parseLocalDate(a.date));
 
         return (
           <>
@@ -730,26 +755,41 @@ function Dashboard() {
             ) : (
               <>
                 <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", marginBottom: "24px" }}>
-                  <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                    Expense History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {expenseTaxYearLabel}</span>
-                  </h3>
-                  <TransactionList
-                    isMobile={isMobile}
-                    getKey={(r) => r.id}
-                    rows={sortedRecords}
-                    columns={[
-                      { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
-                      { key: "merchant", label: "Merchant", render: (r) => (
-                        <span>{r.merchant}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
-                      ) },
-                      { key: "category", label: "Category", render: (r) => r.category },
-                      { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
-                      { key: "method", label: "Method", render: (r) => r.paymentMethod },
-                      { key: "actions", label: "Actions", align: "right", render: (r) => (
-                        <ActionLinks onEdit={() => handleEditExpense(r.id)} onDelete={() => handleDeleteExpense(r.id)} label={`expense from ${r.merchant}`} />
-                      ) },
-                    ]}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", fontFamily: "Manrope, sans-serif" }}>
+                      Expense History <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {expenseTaxYearLabel}</span>
+                    </h3>
+                    <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[500] }}>Showing {filteredExpenses.length} of {expensesInTaxYear.length}</span>
+                  </div>
+                  <ExpenseFilters
+                    filters={expenseFilters}
+                    onChange={(patch) => setExpenseFilters((prev) => ({ ...prev, ...patch }))}
+                    onReset={() => setExpenseFilters(defaultExpenseFilters)}
+                    categories={expenseCategoryOptions}
                   />
+                  {filteredExpenses.length === 0 ? (
+                    <div style={{ padding: "24px", textAlign: "center", color: TOKENS.colors.neutral[600] }}>
+                      No expense records match your filters.
+                    </div>
+                  ) : (
+                    <TransactionList
+                      isMobile={isMobile}
+                      getKey={(r) => r.id}
+                      rows={sortedRecords}
+                      columns={[
+                        { key: "date", label: "Date", render: (r) => storageService.parseLocalDate(r.date).toLocaleDateString() },
+                        { key: "merchant", label: "Merchant", render: (r) => (
+                          <span>{r.merchant}{r.isDemo && <span style={{ marginLeft: "6px" }}><Badge variant="default">Demo</Badge></span>}</span>
+                        ) },
+                        { key: "category", label: "Category", render: (r) => r.category },
+                        { key: "amount", label: "Amount", render: (r) => <strong>£{parseFloat(r.amount).toFixed(2)}</strong> },
+                        { key: "method", label: "Method", render: (r) => r.paymentMethod },
+                        { key: "actions", label: "Actions", align: "right", render: (r) => (
+                          <ActionLinks onEdit={() => handleEditExpense(r.id)} onDelete={() => handleDeleteExpense(r.id)} label={`expense from ${r.merchant}`} />
+                        ) },
+                      ]}
+                    />
+                  )}
                 </div>
 
                 {Object.keys(expensesByMonth).length > 0 && (
