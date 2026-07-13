@@ -19,9 +19,11 @@ A product of **Daramola Digital Labs**.
 
 ## Tech stack
 
-- React 19 + Vite
-- Vanilla CSS-in-JS using semantic design tokens (`src/tokens.js`)
+- React 19 + Vite + TypeScript
+- Tailwind CSS (v4) for styling
+- Zustand for global state management
 - Vitest for unit tests
+- Playwright for E2E tests
 - Deployed on Netlify (`netlify.toml` sets caching and security headers)
 
 ## Getting started
@@ -30,13 +32,14 @@ A product of **Daramola Digital Labs**.
 npm install
 npm run dev      # start the dev server (http://localhost:5173/)
 npm test         # run the Vitest suite
+npm run test:e2e # run the Playwright E2E tests
 npm run lint     # run ESLint
 npm run build    # production build to dist/
 ```
 
 ## Testing
 
-Financial calculations are covered by a Vitest suite in [`src/storage.test.js`](src/storage.test.js): tax-year boundaries (5/6 April, January, following-year, leap years), the exclusive upper boundary, local-date parsing, completed-tax-month logic and the completed-month average window, income status separation and reconciliation (`invoiced = received + outstanding + overdue`), integer-pence rounding, and input validation. CI runs lint, tests and build on every push and pull request (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+Financial calculations are covered by a Vitest suite in [`src/storage.test.ts`](src/storage.test.ts) and [`src/store.test.ts`](src/store.test.ts). End-to-end workflows (CRUD operations, demo data, storage clearing, and data persistence) are verified by Playwright in [`tests/phase8.spec.ts`](tests/phase8.spec.ts). CI runs lint, typecheck, tests, build, and E2E on every push and pull request (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Status
 
