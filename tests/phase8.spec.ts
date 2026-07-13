@@ -479,18 +479,14 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       
       // The estimate should be hidden initially
       await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeHidden();
-      await expect(page.getByText('Before we calculate your estimate')).toBeVisible();
+      await expect(page.getByText('Tax Profile Details')).toBeVisible();
 
-      // Check all 5 checkboxes
-      await page.getByLabel(/tax resident in England/).check();
-      await page.getByLabel(/only source of income is this sole-trader/).check();
-      await page.getByLabel(/do not have multiple businesses/).check();
-      await page.getByLabel(/not from a connected party/).check();
-      await page.getByLabel(/does not account for Gift Aid/).check();
+      // Click calculate
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
 
       // The estimate should now be visible
       await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeVisible();
-      await expect(page.getByText('Before we calculate your estimate')).toBeHidden();
+      await expect(page.getByText('Tax Profile Details')).toBeHidden();
     });
   });
 });
