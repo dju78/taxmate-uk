@@ -1,7 +1,58 @@
 // Storage service - abstraction layer for income and expense data persistence
 // Currently uses localStorage; can be replaced with backend API
-import type { IncomeRecord, ExpenseRecord, ExportBundle, ExportPreferences, IncomeCalcRecord, ExpenseCalcRecord } from './types';
+import type { IncomeRecord, ExpenseRecord, ExpenseCategory, ExportBundle, ExportPreferences, IncomeCalcRecord, ExpenseCalcRecord } from './types';
+import { isExpenseCategory, LEGACY_EXPENSE_CATEGORY_MAP } from './types';
 import { isValidAmount, isValidDateString } from './validation';
+
+// Validate the optional future-ready expense fields at runtime. Returns error
+// strings (empty = valid). `label` prefixes messages, e.g. "expenseRecords[3]".
+export const validateFutureExpenseFields = (r: Record<string, unknown>, label: string): string[] => {
+  const errors: string[] = [];
+  if (r.allowableType !== undefined && r.allowableType !== 'allowable' && r.allowableType !== 'non-allowable') {
+    errors.push(`${label}: allowableType must be "allowable" or "non-allowable".`);
+  }
+  if (r.paymentStatus !== undefined && r.paymentStatus !== 'paid' && r.paymentStatus !== 'unpaid') {
+    errors.push(`${label}: paymentStatus must be "paid" or "unpaid".`);
+  }
+  if (r.businessUsePercentage !== undefined) {
+    const p = r.businessUsePercentage;
+    if (typeof p !== 'number' || !Number.isFinite(p) || p < 0 || p > 100) {
+      errors.push(`${label}: businessUsePercentage must be a number from 0 to 100.`);
+    }
+  }
+  if (r.expenseType !== undefined && r.expenseType !== 'capital' && r.expenseType !== 'revenue') {
+    errors.push(`${label}: expenseType must be "capital" or "revenue".`);
+  }
+  if (r.isReimbursed !== undefined && typeof r.isReimbursed !== 'boolean') {
+    errors.push(`${label}: isReimbursed must be a boolean.`);
+  }
+  return errors;
+};
+
+// Copy only the valid optional future-ready fields onto a record.
+const pickFutureExpenseFields = (r: Record<string, unknown>): Partial<ExpenseRecord> => {
+  const out: Partial<ExpenseRecord> = {};
+  if (r.allowableType === 'allowable' || r.allowableType === 'non-allowable') out.allowableType = r.allowableType;
+  if (r.paymentStatus === 'paid' || r.paymentStatus === 'unpaid') out.paymentStatus = r.paymentStatus;
+  if (typeof r.businessUsePercentage === 'number' && Number.isFinite(r.businessUsePercentage) && r.businessUsePercentage >= 0 && r.businessUsePercentage <= 100) {
+    out.businessUsePercentage = r.businessUsePercentage;
+  }
+  if (r.expenseType === 'capital' || r.expenseType === 'revenue') out.expenseType = r.expenseType;
+  if (typeof r.isReimbursed === 'boolean') out.isReimbursed = r.isReimbursed;
+  if (typeof r.legacyCategory === 'string' && r.legacyCategory) out.legacyCategory = r.legacyCategory;
+  return out;
+};
+
+// Map a legacy (pre-HMRC) category to the approved enum, preserving the
+// original as legacyCategory. Unknown values map to "Other business expenses".
+export const migrateLegacyExpenseCategory = (
+  category: unknown
+): { category: ExpenseCategory; legacyCategory?: string } => {
+  if (isExpenseCategory(category)) return { category };
+  const original = typeof category === 'string' ? category : '';
+  const mapped = LEGACY_EXPENSE_CATEGORY_MAP[original] ?? 'Other business expenses';
+  return { category: mapped, legacyCategory: original || 'Unknown' };
+};
 
 export interface ImportValidationResult {
   ok: boolean;
@@ -51,7 +102,9 @@ export const INCOME_STATUS_VALUES: string[] = Object.values(INCOME_STATUS);
 
 // Persistence schema version. Bump when the stored record shape changes and add
 // a migration step in migrateIfNeeded().
-export const SCHEMA_VERSION = 1;
+// v2: expense categories migrated from the generic set to the HMRC enum
+//     (original value preserved as legacyCategory).
+export const SCHEMA_VERSION = 2;
 const SCHEMA_VERSION_KEY = 'taxmate_schema_version';
 const STORAGE_ERROR_KEY = 'taxmate_storage_error';
 
@@ -114,11 +167,21 @@ export const storageService = {
 
   migrateIfNeeded: (): void => {
     try {
-      const stored = Number(localStorage.getItem(SCHEMA_VERSION_KEY));
-      if (!stored) {
-        localStorage.setItem(SCHEMA_VERSION_KEY, String(SCHEMA_VERSION));
+      const stored = Number(localStorage.getItem(SCHEMA_VERSION_KEY)) || 1;
+      if (stored < 2) {
+        // v1 -> v2: map legacy generic expense categories to the HMRC enum,
+        // preserving the original value as legacyCategory (never silently
+        // misclassify: unmapped values go to "Other business expenses" WITH
+        // the original kept for review).
+        const expenses = storageService.getExpenseRecords();
+        const migrated = expenses.map((r) => {
+          if (isExpenseCategory(r.category)) return r;
+          const { category, legacyCategory } = migrateLegacyExpenseCategory(r.category);
+          return { ...r, category, legacyCategory };
+        });
+        localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(migrated));
       }
-      // Future migrations: if (stored < 2) { ...transform...; set version }
+      localStorage.setItem(SCHEMA_VERSION_KEY, String(SCHEMA_VERSION));
     } catch {
       // ignore
     }
@@ -515,6 +578,13 @@ export const storageService = {
 
   addExpenseRecord: (record: Partial<ExpenseRecord>): ExpenseRecord => {
     try {
+      if (!isExpenseCategory(record.category)) {
+        throw new Error(`Invalid expense category: ${String(record.category)}`);
+      }
+      const fieldErrors = validateFutureExpenseFields(record as Record<string, unknown>, 'expense');
+      if (fieldErrors.length > 0) {
+        throw new Error(fieldErrors.join(' '));
+      }
       const records = storageService.getExpenseRecords();
       const newRecord = {
         id: generateId(),
@@ -532,6 +602,13 @@ export const storageService = {
 
   updateExpenseRecord: (id: string, updates: Partial<ExpenseRecord>): ExpenseRecord => {
     try {
+      if (updates.category !== undefined && !isExpenseCategory(updates.category)) {
+        throw new Error(`Invalid expense category: ${String(updates.category)}`);
+      }
+      const fieldErrors = validateFutureExpenseFields(updates as Record<string, unknown>, 'expense');
+      if (fieldErrors.length > 0) {
+        throw new Error(fieldErrors.join(' '));
+      }
       const records = storageService.getExpenseRecords();
       const index = records.findIndex((r) => r.id === id);
       if (index === -1) {
@@ -799,21 +876,40 @@ export const storageService = {
           return;
         }
         const r = item as Record<string, unknown>;
-        const id = resolveId(r.id, seenExpenseIds, `expenseRecords[${i}]`);
-        if (!isValidDateString(r.date)) errors.push(`expenseRecords[${i}]: invalid or missing date (expected YYYY-MM-DD).`);
-        if (!isValidAmount(r.amount)) errors.push(`expenseRecords[${i}]: invalid or missing amount.`);
-        if (!str(r.merchant).trim()) errors.push(`expenseRecords[${i}]: missing merchant.`);
-        if (!str(r.category).trim()) errors.push(`expenseRecords[${i}]: missing category.`);
+        const label = `expenseRecords[${i}]`;
+        const id = resolveId(r.id, seenExpenseIds, label);
+        if (!isValidDateString(r.date)) errors.push(`${label}: invalid or missing date (expected YYYY-MM-DD).`);
+        if (!isValidAmount(r.amount)) errors.push(`${label}: invalid or missing amount.`);
+        if (!str(r.merchant).trim()) errors.push(`${label}: missing merchant.`);
+        if (!str(r.category).trim()) errors.push(`${label}: missing category.`);
+        // Category enforcement: current-schema backups must use the HMRC enum;
+        // legacy (v1) backups are migrated with the original preserved.
+        let category: ExpenseCategory = 'Other business expenses';
+        let legacyCategory: string | undefined;
+        if (isExpenseCategory(r.category)) {
+          category = r.category;
+        } else if (legacy) {
+          const migrated = migrateLegacyExpenseCategory(r.category);
+          category = migrated.category;
+          legacyCategory = migrated.legacyCategory;
+        } else if (str(r.category).trim()) {
+          errors.push(`${label}: unsupported category "${str(r.category)}".`);
+        }
+        // Future-ready field validation (types disappear at runtime).
+        errors.push(...validateFutureExpenseFields(r, label));
         expenses.push({
           id: id || generateId(),
           date: str(r.date),
           merchant: str(r.merchant),
-          category: str(r.category, 'Other'),
+          category,
+          ...(legacyCategory ? { legacyCategory } : {}),
           amount: str(r.amount),
           paymentMethod: str(r.paymentMethod, 'Card'),
           description: str(r.description),
           notes: str(r.notes),
           isDemo: r.isDemo === true,
+          // Preserve valid future-ready fields through export/import.
+          ...pickFutureExpenseFields(r),
         });
       });
     }

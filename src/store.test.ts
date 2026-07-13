@@ -7,7 +7,7 @@ import {
   currentTaxYearStart,
 } from './store';
 import { storageService } from './storage';
-import { EXPENSE_CATEGORIES } from './types';
+import { EXPENSE_CATEGORIES, isExpenseCategory } from './types';
 
 describe('Phase 2: tax-year store', () => {
   beforeEach(() => {
@@ -304,5 +304,129 @@ describe('Phase 6: HMRC categories + future-ready expense fields', () => {
     demo.expenses.forEach((e) => {
       expect(EXPENSE_CATEGORIES).toContain(e.category);
     });
+  });
+});
+
+describe('Phase 6 rework: end-to-end category enforcement', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const v2exp = (expense: Record<string, unknown>) => ({
+    schemaVersion: 2,
+    exportDate: '2026-01-01T00:00:00.000Z',
+    appPreferences: {},
+    incomeRecords: [],
+    expenseRecords: [{ id: 'e1', date: '2026-05-01', merchant: 'Shop', amount: '10', category: 'Travel', ...expense }],
+  });
+
+  it('isExpenseCategory accepts only the approved enum', () => {
+    expect(isExpenseCategory('Office costs')).toBe(true);
+    expect(isExpenseCategory('Utilities')).toBe(false);
+    expect(isExpenseCategory('Random')).toBe(false);
+    expect(isExpenseCategory(42)).toBe(false);
+  });
+
+  it('addExpenseRecord rejects an invalid category and accepts a valid one', () => {
+    expect(() =>
+      storageService.addExpenseRecord({ date: '2026-05-01', merchant: 'X', category: 'Utilities' as never, amount: '5' })
+    ).toThrow();
+    const saved = storageService.addExpenseRecord({ date: '2026-05-01', merchant: 'X', category: 'Travel', amount: '5' });
+    expect(saved.category).toBe('Travel');
+  });
+
+  it('updateExpenseRecord rejects an invalid category and accepts a valid one', () => {
+    const saved = storageService.addExpenseRecord({ date: '2026-05-01', merchant: 'X', category: 'Travel', amount: '5' });
+    expect(() => storageService.updateExpenseRecord(saved.id, { category: 'Software' as never })).toThrow();
+    const updated = storageService.updateExpenseRecord(saved.id, { category: 'Professional fees' });
+    expect(updated.category).toBe('Professional fees');
+  });
+
+  it('v2 import rejects unsupported categories', () => {
+    const r = storageService.validateImportData(v2exp({ category: 'Supplies' }));
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /unsupported category "Supplies"/i.test(e))).toBe(true);
+  });
+
+  it('legacy v1 import migrates generic categories, preserving the original', () => {
+    const legacy = {
+      schemaVersion: 1,
+      exportedAt: '2026-01-01',
+      income: [],
+      expenses: [{ date: '2026-05-01', merchant: 'Old Shop', amount: '10', category: 'Utilities' }],
+    };
+    const r = storageService.validateImportData(legacy);
+    expect(r.ok).toBe(true);
+    expect(r.expenses[0].category).toBe('Rent, rates, power and insurance');
+    expect(r.expenses[0].legacyCategory).toBe('Utilities');
+  });
+
+  it('future-ready fields survive an export -> validate -> restore round-trip', () => {
+    storageService.addExpenseRecord({
+      date: '2026-05-01', merchant: 'Acme', category: 'Office costs', amount: '10',
+      allowableType: 'allowable', paymentStatus: 'paid', businessUsePercentage: 80,
+      expenseType: 'revenue', isReimbursed: false,
+    });
+    const bundle = storageService.getExportBundle({});
+    const r = storageService.validateImportData(JSON.parse(JSON.stringify(bundle)));
+    expect(r.ok).toBe(true);
+    storageService.clearAllData();
+    storageService.applyRestore(r.income, r.expenses);
+    const restored = storageService.getExpenseRecords()[0];
+    expect(restored.allowableType).toBe('allowable');
+    expect(restored.paymentStatus).toBe('paid');
+    expect(restored.businessUsePercentage).toBe(80);
+    expect(restored.expenseType).toBe('revenue');
+    expect(restored.isReimbursed).toBe(false);
+  });
+
+  it('import rejects invalid optional future-ready values', () => {
+    const r = storageService.validateImportData(
+      v2exp({ allowableType: 'sometimes', businessUsePercentage: 500, expenseType: 'unknown' })
+    );
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /allowableType/.test(e))).toBe(true);
+    expect(r.errors.some((e) => /businessUsePercentage/.test(e))).toBe(true);
+    expect(r.errors.some((e) => /expenseType/.test(e))).toBe(true);
+  });
+
+  it('businessUsePercentage boundaries: 0 and 100 valid; -1 and 101 invalid', () => {
+    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 0 })).ok).toBe(true);
+    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 100 })).ok).toBe(true);
+    expect(storageService.validateImportData(v2exp({ businessUsePercentage: -1 })).ok).toBe(false);
+    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 101 })).ok).toBe(false);
+    expect(() =>
+      storageService.addExpenseRecord({ date: '2026-05-01', merchant: 'X', category: 'Travel', amount: '5', businessUsePercentage: 101 })
+    ).toThrow();
+  });
+
+  it('versioned migration maps stored legacy categories, preserving originals', () => {
+    // Simulate a pre-Phase-6 browser: v1 schema with generic categories.
+    localStorage.setItem('taxmate_expense_records', JSON.stringify([
+      { id: 'l1', date: '2026-05-01', merchant: 'PaperCo', category: 'Supplies', amount: '5' },
+      { id: 'l2', date: '2026-05-02', merchant: 'RailCo', category: 'Travel', amount: '9' },
+      { id: 'l3', date: '2026-05-03', merchant: 'MysteryCo', category: 'Bananas', amount: '3' },
+    ]));
+    localStorage.setItem('taxmate_schema_version', '1');
+    storageService.migrateIfNeeded();
+    const [l1, l2, l3] = storageService.getExpenseRecords();
+    expect(l1.category).toBe('Office costs');
+    expect(l1.legacyCategory).toBe('Supplies');
+    expect(l2.category).toBe('Travel'); // already valid: untouched
+    expect(l2.legacyCategory).toBeUndefined();
+    expect(l3.category).toBe('Other business expenses'); // unknown: mapped + original kept
+    expect(l3.legacyCategory).toBe('Bananas');
+    expect(localStorage.getItem('taxmate_schema_version')).toBe('2');
+  });
+
+  it('migration is idempotent (running again changes nothing)', () => {
+    localStorage.setItem('taxmate_expense_records', JSON.stringify([
+      { id: 'l1', date: '2026-05-01', merchant: 'PaperCo', category: 'Supplies', amount: '5' },
+    ]));
+    localStorage.setItem('taxmate_schema_version', '1');
+    storageService.migrateIfNeeded();
+    const after1 = localStorage.getItem('taxmate_expense_records');
+    storageService.migrateIfNeeded();
+    expect(localStorage.getItem('taxmate_expense_records')).toBe(after1);
   });
 });

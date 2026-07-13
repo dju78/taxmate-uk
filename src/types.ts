@@ -2,21 +2,10 @@
 
 export type IncomeStatus = 'received' | 'pending' | 'overdue';
 
-// HMRC-style self-employment expense categories (approved enum).
-export type ExpenseCategory =
-  | 'Office costs'
-  | 'Travel'
-  | 'Car and van expenses'
-  | 'Rent, rates, power and insurance'
-  | 'Phone, internet and postage'
-  | 'Financial costs'
-  | 'Staff costs'
-  | 'Goods for resale'
-  | 'Advertising and marketing'
-  | 'Professional fees'
-  | 'Other business expenses';
-
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+// HMRC-style self-employment expense categories (approved enum). The constant
+// array is the single source of truth; the union type is derived from it so
+// the two can never drift apart.
+export const EXPENSE_CATEGORIES = [
   'Office costs',
   'Travel',
   'Car and van expenses',
@@ -28,7 +17,27 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Advertising and marketing',
   'Professional fees',
   'Other business expenses',
-];
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+// Runtime guard (TypeScript types disappear at runtime).
+export function isExpenseCategory(value: unknown): value is ExpenseCategory {
+  return typeof value === 'string' && (EXPENSE_CATEGORIES as readonly string[]).includes(value);
+}
+
+// Mapping from the pre-Phase-6 generic categories to the HMRC enum, used by the
+// versioned storage migration and legacy (v1) backup imports. The original
+// value is preserved on the record as legacyCategory so nothing is silently
+// misclassified.
+export const LEGACY_EXPENSE_CATEGORY_MAP: Record<string, ExpenseCategory> = {
+  Supplies: 'Office costs',
+  Equipment: 'Office costs',
+  Software: 'Phone, internet and postage',
+  Travel: 'Travel',
+  Utilities: 'Rent, rates, power and insurance',
+  Other: 'Other business expenses',
+};
 
 export interface IncomeRecord {
   id: string;
@@ -49,7 +58,10 @@ export interface ExpenseRecord {
   date: string; // YYYY-MM-DD (local)
   merchant: string;
   description?: string;
-  category: string;
+  category: ExpenseCategory;
+  // Original pre-migration category (set by the versioned migration / legacy
+  // import so no record is silently misclassified).
+  legacyCategory?: string;
   amount: string;
   paymentMethod?: string;
   notes?: string;
