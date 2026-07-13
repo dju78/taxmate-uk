@@ -10,9 +10,10 @@ export interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   'aria-label'?: string;
   style?: CSSProperties;
+  className?: string;
 }
 
-export const Button = ({ variant = 'primary', disabled = false, children, onClick, type = 'button', 'aria-label': ariaLabel, style }: ButtonProps) => {
+export const Button = ({ variant = 'primary', disabled = false, children, onClick, type = 'button', 'aria-label': ariaLabel, style, className }: ButtonProps) => {
   const baseStyles: CSSProperties = {
     padding: '12px 24px',
     borderRadius: '8px',
@@ -39,6 +40,7 @@ export const Button = ({ variant = 'primary', disabled = false, children, onClic
       style={{ ...baseStyles, ...variantStyles[variant], ...style }}
       disabled={disabled}
       onClick={onClick}
+      className={className}
     >
       {children}
     </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Alert } from './components';
 import { INCOME_STATUS, INCOME_STATUS_LABELS, INCOME_STATUS_OPTIONS } from './storage';
 import { isValidAmount, isValidDateString, formatLocalDate } from './validation';
@@ -65,16 +65,15 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
 
   const [errors, setErrors] = useState<IncomeFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [showDuplicateFlow, setShowDuplicateFlow] = useState(false);
 
-  useEffect(() => {
-    if (formData.amount && formData.source) {
-      const dup = storageService.findDuplicateIncome(formData, initialData?.id);
-      setIsDuplicate(!!dup);
-    } else {
-      setIsDuplicate(false);
-    }
-  }, [formData.amount, formData.source, formData.date, formData.description, initialData?.id]);
+  // Derived (not stored in state + effect): recomputed synchronously from the
+  // current form values on every render, so it never needs an effect and is
+  // always in sync with formData.
+  const duplicateRecord: IncomeRecord | null =
+    formData.amount && formData.source
+      ? storageService.findDuplicateIncome(formData, initialData?.id) ?? null
+      : null;
 
   const validateForm = (): boolean => {
     const newErrors: IncomeFormErrors = {};
@@ -109,12 +108,24 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
     if (errors[name as keyof IncomeFormData]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    // Any further edit re-opens the duplicate check (the derived value above
+    // recomputes automatically; this just collapses a previously-shown warning
+    // so the user re-confirms against the new values).
+    if (showDuplicateFlow) {
+      setShowDuplicateFlow(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
     if (!validateForm()) return;
+    
+    if (duplicateRecord && !showDuplicateFlow) {
+      setShowDuplicateFlow(true);
+      return;
+    }
+    
     try {
       onSubmit(formData);
     } catch (error) {
@@ -140,9 +151,23 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
   return (
     <div className="w-full max-w-[500px]">
       {submitError && <Alert variant="error" title="Error" description={submitError} />}
-      {isDuplicate && <Alert variant="warning" title="Possible duplicate" description="A similar transaction already exists on this date. You can save anyway if this is intentional." />}
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+      
+      {showDuplicateFlow ? (
+        <div className="flex flex-col gap-4 mt-4 bg-yellow-50 p-6 rounded-xl border border-yellow-200">
+           <h3 className="text-lg font-bold text-yellow-900">Possible Duplicate Detected</h3>
+           <p className="text-yellow-800 text-sm">
+             A record for <strong>£{formData.amount}</strong> from <strong>{formData.source}</strong> on <strong>{formData.date}</strong> already exists.
+           </p>
+           <div className="flex flex-col gap-3 mt-4">
+             <Button type="button" variant="secondary" onClick={() => setShowDuplicateFlow(false)}>Review existing record</Button>
+             <div className="flex gap-3">
+               <Button type="button" variant="ghost" onClick={onCancel} className="flex-1 border border-neutral-300">Cancel</Button>
+               <Button type="button" variant="primary" onClick={() => { setShowDuplicateFlow(false); onSubmit(formData); }} className="flex-1 !bg-yellow-600 hover:!bg-yellow-700">Save anyway</Button>
+             </div>
+           </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
         <div>
           <label htmlFor="income-date" className={labelCls}>
             Date *
@@ -277,7 +302,8 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
             {initialData ? 'Update Income' : 'Add Income'}
           </Button>
         </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 };

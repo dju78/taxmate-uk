@@ -1,4 +1,37 @@
 import { storageService } from './storage';
+import type { IncomeSortOption, ExpenseSortOption } from './types';
+
+interface SearchableIncomeRecord {
+  source?: string;
+  description?: string;
+  category?: string;
+  notes?: string;
+  status?: string;
+}
+
+interface SearchableExpenseRecord {
+  merchant?: string;
+  description?: string;
+  category?: string;
+  notes?: string;
+  paymentMethod?: string;
+}
+
+interface SortableRecord {
+  date: string;
+  id?: string;
+  amount?: string | number;
+}
+
+interface SortableIncomeRecord extends SortableRecord {
+  source?: string;
+  status?: string;
+}
+
+interface SortableExpenseRecord extends SortableRecord {
+  merchant?: string;
+  category?: string;
+}
 
 export type IncomeStatusFilter = 'all' | 'received' | 'pending' | 'overdue';
 
@@ -76,10 +109,10 @@ const normalizeForSearch = (str?: string): string => {
   return str.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
 
-export const searchIncomeRecords = (records: any[], query: string) => {
+export const searchIncomeRecords = <T extends SearchableIncomeRecord>(records: T[], query: string): T[] => {
   if (!query.trim()) return records;
   const q = normalizeForSearch(query);
-  return records.filter(r => {
+  return records.filter((r) => {
     return normalizeForSearch(r.source).includes(q) ||
            normalizeForSearch(r.description).includes(q) ||
            normalizeForSearch(r.category).includes(q) ||
@@ -88,10 +121,10 @@ export const searchIncomeRecords = (records: any[], query: string) => {
   });
 };
 
-export const searchExpenseRecords = (records: any[], query: string) => {
+export const searchExpenseRecords = <T extends SearchableExpenseRecord>(records: T[], query: string): T[] => {
   if (!query.trim()) return records;
   const q = normalizeForSearch(query);
-  return records.filter(r => {
+  return records.filter((r) => {
     return normalizeForSearch(r.merchant).includes(q) ||
            normalizeForSearch(r.description).includes(q) ||
            normalizeForSearch(r.category).includes(q) ||
@@ -101,17 +134,17 @@ export const searchExpenseRecords = (records: any[], query: string) => {
 };
 
 // SORTING
-const parseAmount = (a: string) => parseFloat(a) || 0;
+const parseAmount = (a: string | number | undefined) => parseFloat(String(a ?? '')) || 0;
 const parseDate = (d: string) => storageService.parseLocalDate(d).getTime();
 
-// Tie-breaker: date descending, then ID
-const tieBreaker = (a: {date: string; id: string}, b: {date: string; id: string}) => {
+// Tie-breaker: date descending, then ID (stable even when id is absent)
+const tieBreaker = (a: SortableRecord, b: SortableRecord) => {
   const dateDiff = parseDate(b.date) - parseDate(a.date);
   if (dateDiff !== 0) return dateDiff;
-  return a.id.localeCompare(b.id);
+  return (a.id ?? '').localeCompare(b.id ?? '');
 };
 
-export const sortIncomeRecords = (records: any[], sortOption: import('./types').IncomeSortOption) => {
+export const sortIncomeRecords = <T extends SortableIncomeRecord>(records: T[], sortOption: IncomeSortOption): T[] => {
   return [...records].sort((a, b) => {
     let diff = 0;
     switch (sortOption) {
@@ -135,7 +168,7 @@ export const sortIncomeRecords = (records: any[], sortOption: import('./types').
   });
 };
 
-export const sortExpenseRecords = (records: any[], sortOption: import('./types').ExpenseSortOption) => {
+export const sortExpenseRecords = <T extends SortableExpenseRecord>(records: T[], sortOption: ExpenseSortOption): T[] => {
   return [...records].sort((a, b) => {
     let diff = 0;
     switch (sortOption) {

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, cleanup, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { IncomeFilters, ExpenseFilters } from './FilterBar';
 import { defaultIncomeFilters, defaultExpenseFilters } from './filters';
+import type { IncomeSortOption } from './types';
 
 afterEach(cleanup);
 
@@ -16,7 +17,7 @@ describe('IncomeFilters component', () => {
     categories: ['Client work', 'Freelance'],
     search: '',
     onSearchChange: vi.fn(),
-    sort: 'date-desc' as any,
+    sort: 'date-desc' as IncomeSortOption,
     onSortChange: vi.fn(),
   };
 

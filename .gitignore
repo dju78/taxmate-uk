@@ -11,6 +11,13 @@ node_modules
 dist-ssr
 *.local
 
+# Ephemeral local test/screenshot output (committed verification images live
+# under docs/verification/ instead)
+/playwright-report/
+/test-results/
+/screenshots/
+/runs.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
