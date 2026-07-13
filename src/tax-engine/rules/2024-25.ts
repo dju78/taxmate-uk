@@ -2,6 +2,10 @@ import { TaxRules } from '../types';
 
 export const rules2024_25: TaxRules = {
   taxYear: "2024-25",
+  sourceUrl: "https://www.gov.uk/government/publications/rates-and-allowances-income-tax",
+  sourceTitle: "Rates and allowances: Income Tax",
+  sourceCheckedAt: "2024-04-06T00:00:00.000Z",
+  ruleVersion: "confirmed",
   personalAllowance: 1257000,
   personalAllowanceTaperThreshold: 10000000,
   tradingAllowance: 100000,

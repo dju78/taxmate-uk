@@ -38,7 +38,9 @@ export function calculateIncomeTax(
   }
 
   const personalAllowanceUsed = Math.min(taxableTradingProfit, adjustedPersonalAllowance);
-  const taxableIncome = taxableTradingProfit - personalAllowanceUsed;
+  // Taxable income is rounded down to the nearest whole pound.
+  const rawTaxableIncome = taxableTradingProfit - personalAllowanceUsed;
+  const taxableIncome = Math.floor(rawTaxableIncome / 100) * 100;
 
   // 2. Calculate Tax by Band
   const remainingTaxableIncome = taxableIncome;
@@ -60,8 +62,10 @@ export function calculateIncomeTax(
     const maxInBand = band.max !== null ? (band.max - band.min) : Infinity;
     const incomeInThisBand = Math.min(Math.max(0, taxableIncome - band.min), maxInBand);
     
-    // Calculate tax due for this band, round to nearest penny
-    const taxDue = roundPence(incomeInThisBand * band.rate);
+    // Calculate tax due for this band: round down to the nearest penny
+    // Convert float rate (e.g., 0.20) to integer percentage (e.g., 20)
+    const ratePercent = Math.round(band.rate * 100);
+    const taxDue = Math.floor((incomeInThisBand * ratePercent) / 100);
     totalIncomeTax += taxDue;
 
     incomeTaxByBand.push({

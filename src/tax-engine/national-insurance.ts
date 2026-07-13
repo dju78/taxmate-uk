@@ -18,13 +18,15 @@ export function calculateClass4NICs(
   );
 
   if (mainRateProfit > 0) {
-    totalNICs += roundPence(mainRateProfit * rules.class4NICs.mainRate);
+    const mainRatePercent = Math.round(rules.class4NICs.mainRate * 100);
+    totalNICs += Math.floor((mainRateProfit * mainRatePercent) / 100);
   }
 
   // NICs are charged on profit above Upper Profits Limit
   if (taxableTradingProfit > rules.class4NICs.upperProfitsLimit) {
     const upperRateProfit = taxableTradingProfit - rules.class4NICs.upperProfitsLimit;
-    totalNICs += roundPence(upperRateProfit * rules.class4NICs.upperRate);
+    const upperRatePercent = Math.round(rules.class4NICs.upperRate * 100);
+    totalNICs += Math.floor((upperRateProfit * upperRatePercent) / 100);
   }
 
   return totalNICs;

@@ -1,24 +1,40 @@
-import { TaxRules, EstimateInput } from './types';
+import { TaxRules, EstimateInput, DeductionMethod } from './types';
 
 export interface TradingProfitResult {
   allowableExpenses: number; // in pence
   expensesNeedingReviewCount: number;
   expensesNeedingReviewTotal: number; // in pence
-  deductionMethodUsed: "actual" | "trading-allowance";
+  expensesExcludedUnpaidCount: number;
+  expensesExcludedUnpaidTotal: number; // in pence
+  deductionMethodUsed: DeductionMethod;
   deductionAmount: number; // in pence
   taxableTradingProfit: number; // in pence
 }
 
 export function calculateTradingProfit(
-  receivedTradingIncome: number,
-  expenses: EstimateInput['expenses'],
+  input: EstimateInput,
   rules: TaxRules
 ): TradingProfitResult {
   let allowableExpenses = 0;
   let expensesNeedingReviewCount = 0;
   let expensesNeedingReviewTotal = 0;
+  let expensesExcludedUnpaidCount = 0;
+  let expensesExcludedUnpaidTotal = 0;
 
-  for (const expense of expenses) {
+  for (const expense of input.expenses) {
+    if (input.profile.accountingBasis === 'cash') {
+      if (expense.paymentStatus === 'unpaid') {
+        expensesExcludedUnpaidCount++;
+        expensesExcludedUnpaidTotal += expense.amount;
+        continue; // exclude entirely
+      } else if (!expense.paymentStatus) {
+        // missing payment status means it needs review
+        expensesNeedingReviewCount++;
+        expensesNeedingReviewTotal += expense.amount;
+        continue;
+      }
+    }
+
     if (expense.treatment === "allowable") {
       allowableExpenses += expense.amount;
     } else if (expense.treatment === "needs-review") {
@@ -38,29 +54,27 @@ export function calculateTradingProfit(
   // Wait, actual expenses CAN create a loss.
   // So if allowableExpenses > receivedTradingIncome, profit is negative (loss).
   
-  // Let's implement the beneficial choice:
-  let deductionMethodUsed: "actual" | "trading-allowance" = "actual";
-  let deductionAmount = allowableExpenses;
+  let deductionAmount = 0;
+  let deductionMethodUsed = input.deductionMethod;
 
-  // You can only claim trading allowance to create a loss? No, trading allowance cannot create a loss.
-  const maxTradingAllowanceDeduction = Math.min(receivedTradingIncome, rules.tradingAllowance);
-
-  // If claiming the trading allowance is more beneficial (gives a lower profit):
-  // Profit with actual = receivedTradingIncome - allowableExpenses
-  // Profit with allowance = receivedTradingIncome - maxTradingAllowanceDeduction
-  // The user wants the lower profit.
-  // So we choose the max deduction!
-  if (maxTradingAllowanceDeduction > allowableExpenses) {
-    deductionMethodUsed = "trading-allowance";
-    deductionAmount = maxTradingAllowanceDeduction;
+  if (input.deductionMethod === 'trading-allowance') {
+    if (!input.tradingAllowanceEligible) {
+      throw new Error("Trading allowance selected but user is ineligible.");
+    }
+    // Cannot create a loss with trading allowance
+    deductionAmount = Math.min(input.receivedTradingIncome, rules.tradingAllowance);
+  } else {
+    deductionAmount = allowableExpenses;
   }
 
-  const taxableTradingProfit = receivedTradingIncome - deductionAmount;
+  const taxableTradingProfit = input.receivedTradingIncome - deductionAmount;
 
   return {
     allowableExpenses,
     expensesNeedingReviewCount,
     expensesNeedingReviewTotal,
+    expensesExcludedUnpaidCount,
+    expensesExcludedUnpaidTotal,
     deductionMethodUsed,
     deductionAmount,
     taxableTradingProfit

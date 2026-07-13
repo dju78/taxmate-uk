@@ -15,8 +15,7 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
 
   // 3. Trading Profit
   const profitResult = calculateTradingProfit(
-    input.receivedTradingIncome,
-    input.expenses,
+    input,
     rules
   );
 
@@ -47,6 +46,8 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
     allowableExpenses: profitResult.allowableExpenses,
     expensesNeedingReview: profitResult.expensesNeedingReviewCount,
     expensesNeedingReviewTotal: profitResult.expensesNeedingReviewTotal,
+    expensesExcludedUnpaid: profitResult.expensesExcludedUnpaidCount,
+    expensesExcludedUnpaidTotal: profitResult.expensesExcludedUnpaidTotal,
     deductionMethodUsed: profitResult.deductionMethodUsed,
     deductionAmount: profitResult.deductionAmount,
     taxableTradingProfit: profitResult.taxableTradingProfit,

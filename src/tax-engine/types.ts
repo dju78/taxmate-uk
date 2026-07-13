@@ -17,6 +17,10 @@ export interface Class4NICBand {
 
 export interface TaxRules {
   taxYear: string;
+  sourceUrl: string;
+  sourceTitle: string;
+  sourceCheckedAt: string;
+  ruleVersion: string;
   personalAllowance: number; // in pence
   personalAllowanceTaperThreshold: number; // in pence
   incomeTaxBands: IncomeTaxBand[];
@@ -38,15 +42,23 @@ export interface UserProfile {
   hasSavingsInterest: boolean;
   hasCapitalGains: boolean;
   hasOtherTaxableIncome: boolean;
+  accountingBasis: "cash" | "traditional";
+  singleBusiness: boolean;
 }
+
+export type DeductionMethod = "actual-expenses" | "trading-allowance";
 
 export interface EstimateInput {
   taxYear: string;
   profile: UserProfile;
   receivedTradingIncome: number; // in pence
+  deductionMethod: DeductionMethod;
+  tradingAllowanceEligible: boolean;
+  giftAidOrPensionContributions: boolean;
   expenses: {
     amount: number; // in pence
     treatment: TaxTreatment;
+    paymentStatus?: "paid" | "unpaid";
   }[];
 }
 
@@ -63,7 +75,9 @@ export interface EstimateResult {
   allowableExpenses: number; // in pence
   expensesNeedingReview: number; // count
   expensesNeedingReviewTotal: number; // in pence
-  deductionMethodUsed: "actual" | "trading-allowance";
+  expensesExcludedUnpaid: number; // count
+  expensesExcludedUnpaidTotal: number; // in pence
+  deductionMethodUsed: DeductionMethod;
   deductionAmount: number; // in pence
   taxableTradingProfit: number; // in pence
 

@@ -20,4 +20,8 @@ export function validateProfile(profile: UserProfile): void {
   if (blocked.length > 0) {
     throw new Error(`UNSUPPORTED_INCOME: The estimate engine does not currently support: ${blocked.join(", ")}.`);
   }
+
+  if (!profile.singleBusiness) {
+    throw new Error("UNSUPPORTED_MULTIPLE_BUSINESSES: TaxMate currently only supports sole traders with a single business.");
+  }
 }

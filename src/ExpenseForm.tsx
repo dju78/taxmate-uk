@@ -51,7 +51,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
           amount: initialData.amount,
           paymentMethod: isKnownMethod(initialData.paymentMethod ?? '') ? (initialData.paymentMethod as PaymentMethod) : 'Card',
           notes: initialData.notes ?? '',
-          taxTreatment: initialData.taxTreatment ?? 'allowable',
+          taxTreatment: initialData.taxTreatment ?? 'needs-review',
         }
       : {
           // Use local wall-clock date to avoid BST UTC midnight off-by-one.
@@ -62,7 +62,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
           amount: '',
           paymentMethod: 'Card',
           notes: '',
-          taxTreatment: 'allowable',
+          taxTreatment: 'needs-review',
         }
   );
 

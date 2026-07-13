@@ -24,6 +24,9 @@ export const validateFutureExpenseFields = (r: Record<string, unknown>, label: s
   if (r.expenseType !== undefined && r.expenseType !== 'capital' && r.expenseType !== 'revenue') {
     errors.push(`${label}: expenseType must be "capital" or "revenue".`);
   }
+  if (r.taxTreatment !== undefined && r.taxTreatment !== 'allowable' && r.taxTreatment !== 'not-allowable' && r.taxTreatment !== 'needs-review') {
+    errors.push(`${label}: taxTreatment must be "allowable", "not-allowable", or "needs-review".`);
+  }
   if (r.isReimbursed !== undefined && typeof r.isReimbursed !== 'boolean') {
     errors.push(`${label}: isReimbursed must be a boolean.`);
   }
@@ -39,6 +42,9 @@ const pickFutureExpenseFields = (r: Record<string, unknown>): Partial<ExpenseRec
     out.businessUsePercentage = r.businessUsePercentage;
   }
   if (r.expenseType === 'capital' || r.expenseType === 'revenue') out.expenseType = r.expenseType;
+  if (r.taxTreatment === 'allowable' || r.taxTreatment === 'not-allowable' || r.taxTreatment === 'needs-review') {
+    out.taxTreatment = r.taxTreatment;
+  }
   if (typeof r.isReimbursed === 'boolean') out.isReimbursed = r.isReimbursed;
   if (typeof r.legacyCategory === 'string' && r.legacyCategory) out.legacyCategory = r.legacyCategory;
   return out;
@@ -797,9 +803,9 @@ export const storageService = {
       { id: generateId(), date: iso(y, 5, 28), source: 'Demo Client D', category: 'Freelance', amount: '650.00', status: 'overdue', description: 'Audit', notes: '', isDemo: true },
     ];
     const expenses: ExpenseRecord[] = [
-      { id: generateId(), date: iso(y, 5, 10), merchant: 'Demo Stationers', category: 'Office costs', amount: '45.99', paymentMethod: 'Card', description: 'Printer paper', notes: '', isDemo: true },
-      { id: generateId(), date: iso(y, 6, 12), merchant: 'Demo Rail', category: 'Travel', amount: '78.50', paymentMethod: 'Card', description: 'Client visit', notes: '', isDemo: true },
-      { id: generateId(), date: iso(y, 6, 1), merchant: 'Demo Software Co', category: 'Phone, internet and postage', amount: '120.00', paymentMethod: 'Card', description: 'Annual licence', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 5, 10), merchant: 'Demo Stationers', category: 'Office costs', amount: '45.99', paymentMethod: 'Card', paymentStatus: 'paid', taxTreatment: 'needs-review', description: 'Printer paper', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 12), merchant: 'Demo Rail', category: 'Travel', amount: '78.50', paymentMethod: 'Card', paymentStatus: 'paid', taxTreatment: 'needs-review', description: 'Client visit', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 1), merchant: 'Demo Software Co', category: 'Phone, internet and postage', amount: '120.00', paymentMethod: 'Card', paymentStatus: 'paid', taxTreatment: 'needs-review', description: 'Annual licence', notes: '', isDemo: true },
     ];
     return { income, expenses };
   },
@@ -863,12 +869,27 @@ export const storageService = {
     }
 
     // --- migrate older versions to the current field layout ---
-    // v1 (legacy): income / expenses / preferences. v2: incomeRecords /
-    // expenseRecords / appPreferences.
-    const legacy = version < BACKUP_SCHEMA_VERSION;
-    const rawIncome = legacy ? d.income : d.incomeRecords;
-    const rawExpenses = legacy ? d.expenses : d.expenseRecords;
-    const rawPrefs = legacy ? d.preferences : d.appPreferences;
+    let rawIncome: unknown;
+    let rawExpenses: unknown;
+    let rawPrefs: unknown;
+    let isLegacyV1 = false;
+
+    switch (version) {
+      case 1:
+        rawIncome = d.income;
+        rawExpenses = d.expenses;
+        rawPrefs = d.preferences;
+        isLegacyV1 = true;
+        break;
+      case 2:
+      case 3:
+        rawIncome = d.incomeRecords;
+        rawExpenses = d.expenseRecords;
+        rawPrefs = d.appPreferences;
+        break;
+      default:
+        return { ...empty, errors: [`Unsupported backup version ${version}.`] };
+    }
 
     const errors: string[] = [];
     if (rawIncome !== undefined && !Array.isArray(rawIncome)) errors.push('"incomeRecords" must be an array.');
@@ -888,7 +909,7 @@ export const storageService = {
       if (!id) {
         // Missing ids are tolerated for legacy backups (auto-generated), but
         // rejected for the current schema which always writes ids.
-        if (legacy) return generateId();
+        if (isLegacyV1) return generateId();
         errors.push(`${label}: missing id.`);
         return '';
       }
@@ -945,7 +966,7 @@ export const storageService = {
         let legacyCategory: string | undefined;
         if (isExpenseCategory(r.category)) {
           category = r.category;
-        } else if (legacy) {
+        } else if (isLegacyV1) {
           const migrated = migrateLegacyExpenseCategory(r.category);
           category = migrated.category;
           legacyCategory = migrated.legacyCategory;
@@ -965,6 +986,7 @@ export const storageService = {
           description: str(r.description),
           notes: str(r.notes),
           isDemo: r.isDemo === true,
+          taxTreatment: 'needs-review' as const,
           // Preserve valid future-ready fields through export/import.
           ...pickFutureExpenseFields(r),
         });

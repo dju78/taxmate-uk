@@ -2,6 +2,10 @@ import { TaxRules } from '../types';
 
 export const rules2025_26: TaxRules = {
   taxYear: "2025-26",
+  sourceUrl: "https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions",
+  sourceTitle: "Rates and allowances: National Insurance contributions",
+  sourceCheckedAt: "2025-04-06T00:00:00.000Z",
+  ruleVersion: "confirmed",
   personalAllowance: 1257000,
   personalAllowanceTaperThreshold: 10000000,
   tradingAllowance: 100000,

@@ -15,17 +15,24 @@ describe('Tax Engine Matrix Scenarios', () => {
     hasSavingsInterest: false,
     hasCapitalGains: false,
     hasOtherTaxableIncome: false,
+    accountingBasis: "cash" as const,
+    singleBusiness: true,
   };
 
   const createInput = (
     incomePounds: number,
     expensesPounds: number = 0,
-    treatment: "allowable" | "needs-review" | "not-allowable" = "allowable"
+    treatment: "allowable" | "needs-review" | "not-allowable" = "allowable",
+    deductionMethod: "actual-expenses" | "trading-allowance" = "trading-allowance",
+    paymentStatus: "paid" | "unpaid" = "paid"
   ): EstimateInput => ({
     taxYear: "2024-25",
     profile: { ...defaultProfile },
     receivedTradingIncome: toPence(incomePounds),
-    expenses: expensesPounds > 0 ? [{ amount: toPence(expensesPounds), treatment }] : []
+    deductionMethod,
+    tradingAllowanceEligible: true,
+    giftAidOrPensionContributions: false,
+    expenses: expensesPounds > 0 ? [{ amount: toPence(expensesPounds), treatment, paymentStatus }] : []
   });
 
   it('1. Zero income', () => {
@@ -37,7 +44,7 @@ describe('Tax Engine Matrix Scenarios', () => {
   });
 
   it('2. Income below £1,000', () => {
-    const res = calculateEstimate(createInput(800, 0));
+    const res = calculateEstimate(createInput(800, 0, "allowable", "trading-allowance"));
     expect(res.deductionMethodUsed).toBe("trading-allowance");
     expect(res.deductionAmount).toBe(toPence(800));
     expect(res.taxableTradingProfit).toBe(0);
@@ -45,13 +52,13 @@ describe('Tax Engine Matrix Scenarios', () => {
   });
 
   it('3. Trading allowance vs Actual', () => {
-    const res1 = calculateEstimate(createInput(5000, 200));
+    const res1 = calculateEstimate(createInput(5000, 200, "allowable", "trading-allowance"));
     expect(res1.deductionMethodUsed).toBe("trading-allowance");
     expect(res1.deductionAmount).toBe(toPence(1000));
     expect(res1.taxableTradingProfit).toBe(toPence(4000));
 
-    const res2 = calculateEstimate(createInput(5000, 1200));
-    expect(res2.deductionMethodUsed).toBe("actual");
+    const res2 = calculateEstimate(createInput(5000, 1200, "allowable", "actual-expenses"));
+    expect(res2.deductionMethodUsed).toBe("actual-expenses");
     expect(res2.deductionAmount).toBe(toPence(1200));
     expect(res2.taxableTradingProfit).toBe(toPence(3800));
   });
@@ -109,22 +116,23 @@ describe('Tax Engine Matrix Scenarios', () => {
   });
 
   it('9. Negative profit (Loss)', () => {
-    const res = calculateEstimate(createInput(5000, 8000));
+    const res = calculateEstimate(createInput(5000, 8000, "allowable", "actual-expenses"));
     expect(res.taxableTradingProfit).toBe(toPence(-3000));
     expect(res.totalIncomeTax).toBe(0);
     expect(res.class4NICs).toBe(0);
   });
 
   it('10. Exclusions (non-allowable)', () => {
-    const input = createInput(5000, 2000, "not-allowable");
+    // 5000 income, 2000 non-allowable expenses. 0 deduction -> 5000 profit.
+    const input = createInput(5000, 2000, "not-allowable", "actual-expenses");
     const res = calculateEstimate(input);
-    expect(res.taxableTradingProfit).toBe(toPence(4000));
+    expect(res.taxableTradingProfit).toBe(toPence(5000));
   });
 
   it('11. Needs review', () => {
-    const input = createInput(5000, 1500, "needs-review");
+    const input = createInput(5000, 1500, "needs-review", "actual-expenses");
     const res = calculateEstimate(input);
-    expect(res.taxableTradingProfit).toBe(toPence(4000));
+    expect(res.taxableTradingProfit).toBe(toPence(5000));
     expect(res.expensesNeedingReview).toBe(1);
     expect(res.expensesNeedingReviewTotal).toBe(toPence(1500));
   });
