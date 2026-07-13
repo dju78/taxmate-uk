@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Alert } from './components';
 import { isValidAmount, isValidDateString, formatLocalDate } from './validation';
+import { storageService } from './storage';
 import { EXPENSE_CATEGORIES } from './types';
 import type { ExpenseRecord } from './types';
 
@@ -57,6 +58,16 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
 
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+
+  useEffect(() => {
+    if (formData.amount && formData.merchant) {
+      const dup = storageService.findDuplicateExpense(formData as any, initialData?.id);
+      setIsDuplicate(!!dup);
+    } else {
+      setIsDuplicate(false);
+    }
+  }, [formData.amount, formData.merchant, formData.date, formData.description, initialData?.id]);
 
   const validateForm = (): boolean => {
     const newErrors: ExpenseFormErrors = {};
@@ -119,8 +130,9 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
   return (
     <div className="w-full max-w-[500px]">
       {submitError && <Alert variant="error" title="Error" description={submitError} />}
+      {isDuplicate && <Alert variant="warning" title="Possible duplicate" description="A similar transaction already exists on this date. You can save anyway if this is intentional." />}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
         <div>
           <label htmlFor="expense-date" className={labelCls}>
             Date *

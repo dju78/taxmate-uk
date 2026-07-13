@@ -405,6 +405,22 @@ export const storageService = {
 
   getIncomeRecords: (): IncomeRecord[] => readCollection<IncomeRecord>(INCOME_STORAGE_KEY),
 
+  findDuplicateIncome: (record: Partial<IncomeRecord>, excludeId?: string): IncomeRecord | undefined => {
+    const records = storageService.getIncomeRecords();
+    const qAmount = parseFloat(record.amount as string || '0');
+    const qSource = (record.source || '').trim().toLowerCase();
+    const qDate = record.date;
+    const qDesc = (record.description || '').trim().toLowerCase();
+    
+    return records.find(r => 
+      r.id !== excludeId &&
+      r.date === qDate &&
+      parseFloat(r.amount) === qAmount &&
+      (r.source || '').trim().toLowerCase() === qSource &&
+      (r.description || '').trim().toLowerCase() === qDesc
+    );
+  },
+
   addIncomeRecord: (record: Partial<IncomeRecord>): IncomeRecord => {
     try {
       const status = storageService.normaliseIncomeStatus(record.status) || INCOME_STATUS.RECEIVED;
@@ -575,6 +591,22 @@ export const storageService = {
   // ---------------------------------------------------------------------------
 
   getExpenseRecords: (): ExpenseRecord[] => readCollection<ExpenseRecord>(EXPENSE_STORAGE_KEY),
+
+  findDuplicateExpense: (record: Partial<ExpenseRecord>, excludeId?: string): ExpenseRecord | undefined => {
+    const records = storageService.getExpenseRecords();
+    const qAmount = parseFloat(record.amount as string || '0');
+    const qMerchant = (record.merchant || '').trim().toLowerCase();
+    const qDate = record.date;
+    const qDesc = (record.description || '').trim().toLowerCase();
+    
+    return records.find(r => 
+      r.id !== excludeId &&
+      r.date === qDate &&
+      parseFloat(r.amount) === qAmount &&
+      (r.merchant || '').trim().toLowerCase() === qMerchant &&
+      (r.description || '').trim().toLowerCase() === qDesc
+    );
+  },
 
   addExpenseRecord: (record: Partial<ExpenseRecord>): ExpenseRecord => {
     try {

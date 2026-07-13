@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Alert } from './components';
 import { INCOME_STATUS, INCOME_STATUS_LABELS, INCOME_STATUS_OPTIONS } from './storage';
 import { isValidAmount, isValidDateString, formatLocalDate } from './validation';
+import { storageService } from './storage';
 import type { IncomeRecord, IncomeStatus } from './types';
 
 const INCOME_CATEGORIES = ['Client work', 'Freelance', 'Passive income', 'Other'] as const;
@@ -64,6 +65,16 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
 
   const [errors, setErrors] = useState<IncomeFormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+
+  useEffect(() => {
+    if (formData.amount && formData.source) {
+      const dup = storageService.findDuplicateIncome(formData, initialData?.id);
+      setIsDuplicate(!!dup);
+    } else {
+      setIsDuplicate(false);
+    }
+  }, [formData.amount, formData.source, formData.date, formData.description, initialData?.id]);
 
   const validateForm = (): boolean => {
     const newErrors: IncomeFormErrors = {};
@@ -129,8 +140,9 @@ export const IncomeForm = ({ initialData = null, onSubmit, onCancel }: IncomeFor
   return (
     <div className="w-full max-w-[500px]">
       {submitError && <Alert variant="error" title="Error" description={submitError} />}
+      {isDuplicate && <Alert variant="warning" title="Possible duplicate" description="A similar transaction already exists on this date. You can save anyway if this is intentional." />}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
         <div>
           <label htmlFor="income-date" className={labelCls}>
             Date *
