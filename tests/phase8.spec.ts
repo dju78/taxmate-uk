@@ -208,11 +208,14 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await page.getByRole('button', { name: 'Reset filters' }).click();
       await expect(page.getByRole('button', { name: 'Edit income from Alpha' })).toBeVisible();
 
-      // Invalid date ranges
+      // Invalid date ranges: shown as an error, but NOT applied — the last
+      // valid ledger results are preserved rather than emptied.
       await page.locator('input[type="date"]').nth(0).fill('2026-10-01'); // From
       await page.locator('input[type="date"]').nth(1).fill('2026-09-01'); // To
-      await expect(page.getByText('Start date must be on or before the end date.')).toBeVisible();
+      await expect(page.getByText('The From date cannot be later than the To date.')).toBeVisible();
       await expect(page.locator('input[aria-invalid="true"]')).toHaveCount(2);
+      await expect(page.getByRole('button', { name: 'Edit income from Alpha' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Edit income from Beta' })).toBeVisible();
     });
 
     test('expense filters work correctly', async ({ page }) => {
@@ -400,6 +403,45 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       // Navigate using mobile bottom/top bar
       await page.getByRole('button', { name: 'Income' }).click();
       await expect(page.getByRole('heading', { name: 'Income' }).first()).toBeVisible();
+    });
+  });
+
+  test.describe('Report printing', () => {
+    test('print media hides interactive chrome and reveals every report section', async ({ page }) => {
+      // Seed a record so the summary/income/expenses tabs have content.
+      await page.getByRole('button', { name: 'Income' }).click();
+      await page.getByRole('button', { name: '+ Add income' }).click();
+      await page.getByLabel('Client or Income Source').fill('Print Test Client');
+      await page.getByLabel('Amount (£)').fill('123.45');
+      await page.getByRole('button', { name: 'Add Income', exact: true }).click();
+
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await expect(page.getByRole('heading', { name: 'Tax Year Reports' })).toBeVisible();
+
+      // Only the Summary tab is active on screen; Income/Expenses/Tax/Past
+      // are switched out via a plain "hidden" class until print media hits.
+      await expect(page.getByRole('heading', { name: 'Income status' })).toBeHidden();
+
+      await page.emulateMedia({ media: 'print' });
+
+      // Nav, tab bar and the "Print Report" button itself must not print.
+      await expect(page.getByRole('button', { name: 'Print Report' })).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Reports' })).toBeHidden();
+
+      // Every report section becomes visible for print, not just the active tab.
+      await expect(page.getByRole('heading', { name: 'Tax-year summary' }).last()).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Income status' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Expense breakdown' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Tax estimate preview' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Past Tax Years Summary' })).toBeVisible();
+
+      // Print header carries the selected tax year, a generation date, and
+      // the data-quality/prototype disclaimer.
+      await expect(page.getByText(/TaxMate Report: \d{4}\/\d{2}/)).toBeVisible();
+      await expect(page.getByText('Generation Date:').first()).toBeVisible();
+      await expect(page.getByText('Data quality notes:').first()).toBeVisible();
+
+      await page.emulateMedia({ media: 'screen' });
     });
   });
 });

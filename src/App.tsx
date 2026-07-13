@@ -980,7 +980,7 @@ function Dashboard() {
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", width: "100%", height: "100vh", backgroundColor: TOKENS.colors.neutral[50], fontFamily: "Inter, sans-serif" }}>
       {/* Mobile top bar */}
       {isMobile && (
-        <header className="print:hidden" style={{ flexShrink: 0, backgroundColor: TOKENS.colors.neutral[900], color: "white", display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px" }}>
+        <header className="print:!hidden" style={{ flexShrink: 0, backgroundColor: TOKENS.colors.neutral[900], color: "white", display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px" }}>
           <div style={{ width: "30px", height: "30px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icons.Logo />
           </div>
@@ -992,7 +992,7 @@ function Dashboard() {
       {!isMobile && (
         <aside
           aria-label="Primary"
-          className="print:hidden"
+          className="print:!hidden"
           style={{
             width: `${sidebarWidth}px`,
             flex: `0 0 ${sidebarWidth}px`,
@@ -1098,7 +1098,7 @@ function Dashboard() {
       {isMobile && (
         <nav
           aria-label="Primary"
-          className="print:hidden"
+          className="print:!hidden"
           style={{
             position: "fixed",
             bottom: 0,
