@@ -6,7 +6,9 @@ import { Alert } from './components';
 import { useBreakpoint } from './hooks';
 import { diagnosticsService } from './diagnostics';
 import type { IncomeRecord, ExpenseRecord } from './types';
-
+import { calculateEstimate } from './tax-engine/estimate';
+import type { EstimateInput } from './tax-engine/types';
+import { toPence, formatPounds } from './tax-engine/money';
 type ReportTab = 'summary' | 'income' | 'expenses' | 'tax' | 'past';
 
 const REPORT_TABS: { id: ReportTab; label: string }[] = [
@@ -36,6 +38,17 @@ export function ReportsView() {
   const expenseRecords = useTaxStore((s) => s.expenses);
 
   const [activeTab, setActiveTab] = useState<ReportTab>('summary');
+  const [confirmations, setConfirmations] = useState({
+    region: false,
+    soleTrader: false,
+    noMultiple: false,
+    connectedParty: false,
+    giftAid: false,
+  });
+  const allConfirmed = Object.values(confirmations).every(Boolean);
+  const toggleConfirm = (key: keyof typeof confirmations) => {
+    setConfirmations(prev => ({ ...prev, [key]: !prev[key] }));
+  };
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const flash = (m: string) => {
@@ -57,6 +70,35 @@ export function ReportsView() {
   const pendingIncome = incomeInYear.filter(r => r.status === 'pending').reduce((sum, r) => sum + parseFloat(r.amount), 0);
   const overdueIncome = incomeInYear.filter(r => r.status === 'overdue').reduce((sum, r) => sum + parseFloat(r.amount), 0);
   
+  // Engine estimate
+  let estimateResult = null;
+  let estimateError = null;
+  try {
+    const expensesForEngine = expensesInYear.map(e => ({
+      amount: toPence(parseFloat(e.amount)),
+      treatment: (e.taxTreatment as 'allowable' | 'not-allowable' | 'needs-review') || 'allowable'
+    }));
+    
+    const estimateInput: EstimateInput = {
+      taxYear: taxYearLabel.replace('/', '-'),
+      profile: {
+        taxRegion: 'england',
+        hasEmploymentIncome: false,
+        hasPensionIncome: false,
+        hasPropertyIncome: false,
+        hasDividends: false,
+        hasSavingsInterest: false,
+        hasCapitalGains: false,
+        hasOtherTaxableIncome: false
+      },
+      receivedTradingIncome: toPence(receivedYTD),
+      expenses: expensesForEngine
+    };
+    
+    estimateResult = calculateEstimate(estimateInput);
+  } catch (err) {
+    estimateError = err instanceof Error ? err.message : "Calculation failed.";
+  }  
   // Breakdowns
   const incomeBySource = incomeInYear.reduce((acc, r) => {
     acc[r.source] = (acc[r.source] || 0) + parseFloat(r.amount);
@@ -434,31 +476,109 @@ export function ReportsView() {
           className={activeTab === 'tax' ? 'block' : 'hidden print:block print:break-before-page print:mb-8'}
         >
           <h2 className="text-xl font-bold mb-4">Tax estimate preview</h2>
-          <Alert
-            variant="warning"
-            title="Estimate not yet available"
-            description="A Self Assessment tax estimate needs tested UK tax rules (personal allowance, bands, Class 2/4 NICs) that are not implemented yet. The figures below are your actual recorded income and expenses — not a tax calculation."
-          />
-          <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginTop: "24px" }}>
-            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
-              <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[600] }}>Income received</div>
-              <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                £{receivedYTD.toFixed(2)}
+          
+          {estimateError ? (
+            <Alert
+              variant="error"
+              title="Estimate unavailable"
+              description={estimateError}
+            />
+          ) : estimateResult ? (
+            !allConfirmed ? (
+              <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm max-w-2xl print:hidden">
+                <h3 className="font-bold text-lg mb-4 text-neutral-900">Before we calculate your estimate</h3>
+                <p className="text-sm text-neutral-600 mb-6">Please confirm the following statements apply to you so we can provide an accurate estimate.</p>
+                
+                <div className="space-y-4">
+                  {[
+                    { key: 'region', label: 'I am a tax resident in England, Wales, or Northern Ireland (Not Scotland).' },
+                    { key: 'soleTrader', label: 'My only source of income is this sole-trader business.' },
+                    { key: 'noMultiple', label: 'I do not have multiple businesses or partnerships.' },
+                    { key: 'connectedParty', label: 'My income is not from a connected party or employer.' },
+                    { key: 'giftAid', label: 'I understand this calculation does not account for Gift Aid or Pension contributions.' }
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirmations[key as keyof typeof confirmations]}
+                        onChange={() => toggleConfirm(key as keyof typeof confirmations)}
+                        className="mt-1 w-5 h-5 rounded border-neutral-300 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="text-sm text-neutral-700">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            <div className="space-y-6">
+              {estimateResult.warnings.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 space-y-2">
+                  {estimateResult.warnings.map((w, i) => <p key={i}>• {w}</p>)}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
+                  <h3 className="font-bold text-neutral-800 mb-4">Profit Calculation</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-neutral-600">
+                      <span>Trading Income</span>
+                      <span>£{formatPounds(estimateResult.receivedTradingIncome)}</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-600">
+                      <span>Deduction ({estimateResult.deductionMethodUsed === 'actual' ? 'Actual Expenses' : 'Trading Allowance'})</span>
+                      <span className="text-red-600">− £{formatPounds(estimateResult.deductionAmount)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-neutral-900 pt-2 border-t border-neutral-100">
+                      <span>Taxable Profit</span>
+                      <span>£{formatPounds(estimateResult.taxableTradingProfit)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
+                  <h3 className="font-bold text-neutral-800 mb-4">Tax Breakdown</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-neutral-600">
+                      <span>Personal Allowance</span>
+                      <span className="text-green-600">− £{formatPounds(estimateResult.personalAllowanceUsed)}</span>
+                    </div>
+                    <div className="flex justify-between text-neutral-600">
+                      <span>Taxable Income</span>
+                      <span>£{formatPounds(estimateResult.taxableIncome)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-neutral-100 space-y-1">
+                      {estimateResult.incomeTaxByBand.filter(b => b.taxDue > 0).map(b => (
+                        <div key={b.name} className="flex justify-between text-neutral-600">
+                          <span>{b.name} ({(b.rate * 100).toFixed(0)}%)</span>
+                          <span>£{formatPounds(b.taxDue)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between font-bold text-neutral-900 pt-2 border-t border-neutral-100">
+                      <span>Income Tax Due</span>
+                      <span>£{formatPounds(estimateResult.totalIncomeTax)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-neutral-900">
+                      <span>Class 4 NICs</span>
+                      <span>£{formatPounds(estimateResult.class4NICs)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 p-6 rounded-xl border border-green-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-green-900">Estimated Total Tax</h3>
+                  <p className="text-sm text-green-800 mt-1">Based on rules for {estimateResult.taxYear}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-black text-green-900 font-['Manrope']">£{formatPounds(estimateResult.estimatedTotal)}</div>
+                  <div className="text-sm text-green-800 font-medium mt-1">Effective rate: {estimateResult.effectiveRate.toFixed(1)}%</div>
+                </div>
               </div>
             </div>
-            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
-              <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[600] }}>Expenses recorded</div>
-              <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                £{expensesYTD.toFixed(2)}
-              </div>
-            </div>
-            <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
-              <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[600] }}>Recorded cash surplus</div>
-              <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
-                £{netProfitYTD.toFixed(2)}
-              </div>
-            </div>
-          </div>
+            )
+          ) : null}
         </div>
 
         {/* PAST YEARS TAB */}

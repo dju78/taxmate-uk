@@ -48,8 +48,8 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
 
   const incRec = { id: 'a1', date: '2026-05-01', amount: '100', status: 'received', source: 'Acme', category: 'Client work' };
   const expRec = { id: 'e1', date: '2026-05-02', amount: '20', merchant: 'Shop', category: 'Travel' };
-  const v2 = (income: unknown[] = [], expenses: unknown[] = [], appPreferences: Record<string, unknown> = {}) => ({
-    schemaVersion: 2,
+  const v3 = (income: unknown[] = [], expenses: unknown[] = [], appPreferences: Record<string, unknown> = {}) => ({
+    schemaVersion: 3,
     exportDate: '2026-01-01T00:00:00.000Z',
     appPreferences,
     incomeRecords: income,
@@ -59,7 +59,7 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
   it('exports the exact approved schema shape', () => {
     const b = storageService.getExportBundle({ selectedTaxYear: 2026 });
     expect(Object.keys(b).sort()).toEqual(['appPreferences', 'expenseRecords', 'exportDate', 'incomeRecords', 'schemaVersion']);
-    expect(b.schemaVersion).toBe(2);
+    expect(b.schemaVersion).toBe(3);
     expect(b.appPreferences).toEqual({ selectedTaxYear: 2026 });
     expect(Array.isArray(b.incomeRecords)).toBe(true);
     expect(Array.isArray(b.expenseRecords)).toBe(true);
@@ -78,7 +78,7 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
   });
 
   it('rejects an unsupported newer version', () => {
-    const r = storageService.validateImportData({ ...v2([incRec]), schemaVersion: 99 });
+    const r = storageService.validateImportData({ ...v3([incRec]), schemaVersion: 99 });
     expect(r.ok).toBe(false);
     expect(r.errors[0]).toMatch(/Unsupported backup version 99/i);
   });
@@ -99,8 +99,8 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
     expect(r.preferences.selectedTaxYear).toBe(2025);
   });
 
-  it('accepts a well-formed v2 backup and normalises records', () => {
-    const r = storageService.validateImportData(v2([incRec], [expRec], { selectedTaxYear: 2026 }));
+  it('accepts a well-formed v3 backup and normalises records', () => {
+    const r = storageService.validateImportData(v3([incRec], [expRec], { selectedTaxYear: 2026 }));
     expect(r.ok).toBe(true);
     expect(r.income).toHaveLength(1);
     expect(r.expenses).toHaveLength(1);
@@ -109,20 +109,20 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
 
   it('rejects duplicate ids within the backup', () => {
     const dup = { ...incRec };
-    const r = storageService.validateImportData(v2([incRec, dup]));
+    const r = storageService.validateImportData(v3([incRec, dup]));
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /duplicate id/i.test(e))).toBe(true);
   });
 
-  it('rejects a v2 record with a missing id', () => {
+  it('rejects a v3 record with a missing id', () => {
     const noId = { date: '2026-05-01', amount: '100', status: 'received', source: 'A', category: 'Client work' };
-    const r = storageService.validateImportData(v2([noId]));
+    const r = storageService.validateImportData(v3([noId]));
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /missing id/i.test(e))).toBe(true);
   });
 
   it('rejects invalid appPreferences.selectedTaxYear', () => {
-    const r = storageService.validateImportData(v2([incRec], [], { selectedTaxYear: 'nope' }));
+    const r = storageService.validateImportData(v3([incRec], [], { selectedTaxYear: 'nope' }));
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /selectedTaxYear/i.test(e))).toBe(true);
   });
@@ -137,7 +137,7 @@ describe('Phase 4 rework: backup schema / versioning / import modes', () => {
     storageService.addIncomeRecord({ date: '2026-05-01', amount: '500', status: 'received', source: 'Mine' });
     const before = storageService.getIncomeRecords();
     storageService.parseImportText('{ broken');
-    storageService.validateImportData({ schemaVersion: 2, incomeRecords: [{ date: 'bad' }] });
+    storageService.validateImportData({ schemaVersion: 3, incomeRecords: [{ date: 'bad' }] });
     expect(storageService.getIncomeRecords()).toEqual(before);
   });
 
@@ -312,8 +312,8 @@ describe('Phase 6 rework: end-to-end category enforcement', () => {
     localStorage.clear();
   });
 
-  const v2exp = (expense: Record<string, unknown>) => ({
-    schemaVersion: 2,
+  const v3exp = (expense: Record<string, unknown>) => ({
+    schemaVersion: 3,
     exportDate: '2026-01-01T00:00:00.000Z',
     appPreferences: {},
     incomeRecords: [],
@@ -342,8 +342,8 @@ describe('Phase 6 rework: end-to-end category enforcement', () => {
     expect(updated.category).toBe('Professional fees');
   });
 
-  it('v2 import rejects unsupported categories', () => {
-    const r = storageService.validateImportData(v2exp({ category: 'Supplies' }));
+  it('v3 import rejects unsupported categories', () => {
+    const r = storageService.validateImportData(v3exp({ category: 'Supplies' }));
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /unsupported category "Supplies"/i.test(e))).toBe(true);
   });
@@ -380,9 +380,14 @@ describe('Phase 6 rework: end-to-end category enforcement', () => {
     expect(restored.isReimbursed).toBe(false);
   });
 
+  it('accepts missing optional future-ready values', () => {
+    const r = storageService.validateImportData(v3exp({ category: 'Travel' }));
+    expect(r.ok).toBe(true);
+  });
+
   it('import rejects invalid optional future-ready values', () => {
     const r = storageService.validateImportData(
-      v2exp({ allowableType: 'sometimes', businessUsePercentage: 500, expenseType: 'unknown' })
+      v3exp({ category: 'Travel', allowableType: 'sometimes', businessUsePercentage: 500, expenseType: 'unknown' })
     );
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /allowableType/.test(e))).toBe(true);
@@ -391,10 +396,10 @@ describe('Phase 6 rework: end-to-end category enforcement', () => {
   });
 
   it('businessUsePercentage boundaries: 0 and 100 valid; -1 and 101 invalid', () => {
-    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 0 })).ok).toBe(true);
-    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 100 })).ok).toBe(true);
-    expect(storageService.validateImportData(v2exp({ businessUsePercentage: -1 })).ok).toBe(false);
-    expect(storageService.validateImportData(v2exp({ businessUsePercentage: 101 })).ok).toBe(false);
+    expect(storageService.validateImportData(v3exp({ category: 'Travel', businessUsePercentage: 0 })).ok).toBe(true);
+    expect(storageService.validateImportData(v3exp({ category: 'Travel', businessUsePercentage: 100 })).ok).toBe(true);
+    expect(storageService.validateImportData(v3exp({ category: 'Travel', businessUsePercentage: -1 })).ok).toBe(false);
+    expect(storageService.validateImportData(v3exp({ category: 'Travel', businessUsePercentage: 101 })).ok).toBe(false);
     expect(() =>
       storageService.addExpenseRecord({ date: '2026-05-01', merchant: 'X', category: 'Travel', amount: '5', businessUsePercentage: 101 })
     ).toThrow();
@@ -416,7 +421,7 @@ describe('Phase 6 rework: end-to-end category enforcement', () => {
     expect(l2.legacyCategory).toBeUndefined();
     expect(l3.category).toBe('Other business expenses'); // unknown: mapped + original kept
     expect(l3.legacyCategory).toBe('Bananas');
-    expect(localStorage.getItem('taxmate_schema_version')).toBe('2');
+    expect(localStorage.getItem('taxmate_schema_version')).toBe('3');
   });
 
   it('migration is idempotent (running again changes nothing)', () => {

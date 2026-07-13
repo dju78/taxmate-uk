@@ -71,7 +71,7 @@ export const SELECTED_TAX_YEAR_KEY = 'taxmate_selected_tax_year';
 // Backup envelope version. Version 2 is the approved schema
 // (incomeRecords/expenseRecords/appPreferences/exportDate); version 1 is the
 // legacy shape (income/expenses/preferences/exportedAt) and is migrated.
-export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSION = 3;
 
 // UK tax year runs 6 April -> 5 April (inclusive).
 const TAX_YEAR_START_MONTH = 3; // April (0-indexed)
@@ -105,7 +105,8 @@ export const INCOME_STATUS_VALUES: string[] = Object.values(INCOME_STATUS);
 // a migration step in migrateIfNeeded().
 // v2: expense categories migrated from the generic set to the HMRC enum
 //     (original value preserved as legacyCategory).
-export const SCHEMA_VERSION = 2;
+// v3: assign taxTreatment "needs-review" to expenses missing it.
+export const SCHEMA_VERSION = 3;
 const SCHEMA_VERSION_KEY = 'taxmate_schema_version';
 const STORAGE_ERROR_KEY = 'taxmate_storage_error';
 
@@ -186,6 +187,21 @@ export const storageService = {
         if (changed) {
           localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(migrated));
           diagnosticsService.logEvent('SCHEMA_MIGRATION', 'storage', 'info');
+        }
+      }
+      if (stored < 3) {
+        // v2 -> v3: set taxTreatment to 'needs-review' if missing
+        const expenses = storageService.getExpenseRecords();
+        let changed = false;
+        const migrated = expenses.map((r) => {
+          if (!r.taxTreatment) {
+            changed = true;
+            return { ...r, taxTreatment: 'needs-review' as const }; 
+          }
+          return r;
+        });
+        if (changed) {
+          localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(migrated));
         }
       }
       localStorage.setItem(SCHEMA_VERSION_KEY, String(SCHEMA_VERSION));

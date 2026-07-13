@@ -69,6 +69,7 @@ export interface ExpenseRecord {
   // Future-ready fields (in the data model but hidden from the UI this
   // milestone). No calculation treats recorded expenses as tax-deductible.
   allowableType?: 'allowable' | 'non-allowable';
+  taxTreatment?: 'allowable' | 'not-allowable' | 'needs-review';
   paymentStatus?: 'paid' | 'unpaid';
   businessUsePercentage?: number;
   expenseType?: 'capital' | 'revenue';
