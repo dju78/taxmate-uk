@@ -148,3 +148,31 @@ describe('ReportsView accessible tablist', () => {
     expect(document.activeElement).toBe(summaryTab);
   });
 });
+
+describe('ReportsView responsive heading', () => {
+  const setViewportWidth = (width: number) => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: width });
+    window.dispatchEvent(new Event('resize'));
+  };
+
+  // Reset the underlying value only (no resize event) — no component should
+  // still be mounted at this point, and dispatching one here would trigger a
+  // state update outside of React's test act() wrapper.
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
+  });
+
+  it('shrinks the page heading on mobile, matching the rest of the Dashboard', () => {
+    setViewportWidth(375);
+    render(<ReportsView />);
+    const heading = screen.getByRole('heading', { name: 'Tax Year Reports', level: 1 });
+    expect(heading.style.fontSize).toBe('26px');
+  });
+
+  it('uses the full heading size on desktop widths', () => {
+    setViewportWidth(1280);
+    render(<ReportsView />);
+    const heading = screen.getByRole('heading', { name: 'Tax Year Reports', level: 1 });
+    expect(heading.style.fontSize).toBe('36px');
+  });
+});

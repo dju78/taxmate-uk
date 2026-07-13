@@ -3,6 +3,7 @@ import { useTaxStore, taxYearStartToLabel, taxYearReferenceDate, getAvailableTax
 import { storageService } from './storage';
 import { TOKENS } from './tokens';
 import { Alert } from './components';
+import { useBreakpoint } from './hooks';
 import type { IncomeRecord, ExpenseRecord } from './types';
 
 type ReportTab = 'summary' | 'income' | 'expenses' | 'tax' | 'past';
@@ -82,7 +83,8 @@ export function ReportsView() {
     return Object.entries(months).sort((a, b) => a[0].localeCompare(b[0]));
   };
 
-  const pageHeadingSize = "36px";
+  const { isMobile } = useBreakpoint();
+  const pageHeadingSize = isMobile ? "26px" : "36px";
   const kpiCols = "repeat(auto-fit, minmax(240px, 1fr))";
 
   const stamp = () => new Date().toISOString().slice(0, 10);
