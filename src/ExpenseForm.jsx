@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TOKENS } from './tokens';
 import { Button, Input, Alert } from './components';
 import { isValidAmount, isValidDateString } from './validation';
+import { EXPENSE_CATEGORIES } from './types';
 
 export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -9,7 +10,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
       date: new Date().toISOString().split('T')[0],
       merchant: '',
       description: '',
-      category: 'Supplies',
+      category: EXPENSE_CATEGORIES[0],
       amount: '',
       paymentMethod: 'Card',
       notes: '',
@@ -19,7 +20,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
 
-  const categories = ['Supplies', 'Equipment', 'Software', 'Travel', 'Utilities', 'Other'];
+  const categories = EXPENSE_CATEGORIES;
   const paymentMethods = ['Card', 'Bank Transfer', 'Cash', 'Cheque'];
 
   const validateForm = () => {

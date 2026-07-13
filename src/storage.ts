@@ -663,9 +663,9 @@ export const storageService = {
       { id: generateId(), date: iso(y, 5, 28), source: 'Demo Client D', category: 'Freelance', amount: '650.00', status: 'overdue', description: 'Audit', notes: '', isDemo: true },
     ];
     const expenses: ExpenseRecord[] = [
-      { id: generateId(), date: iso(y, 5, 10), merchant: 'Demo Stationers', category: 'Supplies', amount: '45.99', paymentMethod: 'Card', description: 'Printer paper', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 5, 10), merchant: 'Demo Stationers', category: 'Office costs', amount: '45.99', paymentMethod: 'Card', description: 'Printer paper', notes: '', isDemo: true },
       { id: generateId(), date: iso(y, 6, 12), merchant: 'Demo Rail', category: 'Travel', amount: '78.50', paymentMethod: 'Card', description: 'Client visit', notes: '', isDemo: true },
-      { id: generateId(), date: iso(y, 6, 1), merchant: 'Demo Software Co', category: 'Software', amount: '120.00', paymentMethod: 'Card', description: 'Annual licence', notes: '', isDemo: true },
+      { id: generateId(), date: iso(y, 6, 1), merchant: 'Demo Software Co', category: 'Phone, internet and postage', amount: '120.00', paymentMethod: 'Card', description: 'Annual licence', notes: '', isDemo: true },
     ];
     return { income, expenses };
   },

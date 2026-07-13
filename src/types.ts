@@ -2,6 +2,34 @@
 
 export type IncomeStatus = 'received' | 'pending' | 'overdue';
 
+// HMRC-style self-employment expense categories (approved enum).
+export type ExpenseCategory =
+  | 'Office costs'
+  | 'Travel'
+  | 'Car and van expenses'
+  | 'Rent, rates, power and insurance'
+  | 'Phone, internet and postage'
+  | 'Financial costs'
+  | 'Staff costs'
+  | 'Goods for resale'
+  | 'Advertising and marketing'
+  | 'Professional fees'
+  | 'Other business expenses';
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'Office costs',
+  'Travel',
+  'Car and van expenses',
+  'Rent, rates, power and insurance',
+  'Phone, internet and postage',
+  'Financial costs',
+  'Staff costs',
+  'Goods for resale',
+  'Advertising and marketing',
+  'Professional fees',
+  'Other business expenses',
+];
+
 export interface IncomeRecord {
   id: string;
   date: string; // YYYY-MM-DD (local)
@@ -26,11 +54,12 @@ export interface ExpenseRecord {
   paymentMethod?: string;
   notes?: string;
   isDemo?: boolean;
-  // Future-ready fields (populated from Phase 6 onwards; optional for now).
-  allowableType?: string;
-  paymentStatus?: string;
+  // Future-ready fields (in the data model but hidden from the UI this
+  // milestone). No calculation treats recorded expenses as tax-deductible.
+  allowableType?: 'allowable' | 'non-allowable';
+  paymentStatus?: 'paid' | 'unpaid';
   businessUsePercentage?: number;
-  expenseType?: string;
+  expenseType?: 'capital' | 'revenue';
   isReimbursed?: boolean;
   createdAt?: string;
   updatedAt?: string;

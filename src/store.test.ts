@@ -7,6 +7,7 @@ import {
   currentTaxYearStart,
 } from './store';
 import { storageService } from './storage';
+import { EXPENSE_CATEGORIES } from './types';
 
 describe('Phase 2: tax-year store', () => {
   beforeEach(() => {
@@ -254,5 +255,54 @@ describe('Phase 5: filter state in the store', () => {
     useTaxStore.getState().setSelectedTaxYear(2024);
     expect(useTaxStore.getState().incomeFilters).toEqual({ status: 'all', dateFrom: '', dateTo: '', source: 'all', category: 'all' });
     expect(useTaxStore.getState().expenseFilters).toEqual({ dateFrom: '', dateTo: '', category: 'all' });
+  });
+});
+
+describe('Phase 6: HMRC categories + future-ready expense fields', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('exposes the exact approved HMRC expense category enum', () => {
+    expect(EXPENSE_CATEGORIES).toEqual([
+      'Office costs',
+      'Travel',
+      'Car and van expenses',
+      'Rent, rates, power and insurance',
+      'Phone, internet and postage',
+      'Financial costs',
+      'Staff costs',
+      'Goods for resale',
+      'Advertising and marketing',
+      'Professional fees',
+      'Other business expenses',
+    ]);
+  });
+
+  it('stores and returns the future-ready expense fields when present', () => {
+    const saved = storageService.addExpenseRecord({
+      date: '2026-05-01',
+      merchant: 'Acme',
+      category: 'Office costs',
+      amount: '10',
+      allowableType: 'allowable',
+      paymentStatus: 'paid',
+      businessUsePercentage: 80,
+      expenseType: 'revenue',
+      isReimbursed: false,
+    });
+    const got = storageService.getExpenseRecord(saved.id);
+    expect(got?.allowableType).toBe('allowable');
+    expect(got?.paymentStatus).toBe('paid');
+    expect(got?.businessUsePercentage).toBe(80);
+    expect(got?.expenseType).toBe('revenue');
+    expect(got?.isReimbursed).toBe(false);
+  });
+
+  it('demo expenses use HMRC categories', () => {
+    const demo = storageService.getDemoData(2026);
+    demo.expenses.forEach((e) => {
+      expect(EXPENSE_CATEGORIES).toContain(e.category);
+    });
   });
 });
