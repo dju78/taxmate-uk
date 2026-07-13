@@ -13,7 +13,11 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
 
     // Clear localStorage before each test to ensure a clean state
     await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => {
+      localStorage.clear();
+      // Set onboarding completed to bypass the modal
+      localStorage.setItem('taxmate_app_preferences', JSON.stringify({ onboardingCompleted: true }));
+    });
     await page.reload();
   });
 

@@ -14,9 +14,9 @@ mkdirSync(outDir, { recursive: true });
 const BASE = process.env.TARGET_URL || 'http://localhost:5173';
 
 const VIEWPORTS = [
-  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'desktop', width: 1280, height: 900 },
   { name: 'tablet',  width: 768,  height: 1024 },
-  { name: 'mobile',  width: 390,  height: 844 },
+  { name: 'mobile',  width: 375,  height: 812 },
 ];
 
 const PAGES = [
