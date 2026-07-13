@@ -12,6 +12,8 @@ import { StorageNoticeBanner } from "./StorageNoticeBanner";
 import { DataAndBackup } from "./DataAndBackup";
 import { IncomeFilters, ExpenseFilters } from "./FilterBar";
 import { filterIncomeRecords, filterExpenseRecords, uniqueSorted } from "./filters";
+import { ChartFigure } from "./ChartFigure";
+import { DeadlineTracker } from "./DeadlineTracker";
 
 // SVG Icons
 const Icons = {
@@ -384,35 +386,34 @@ function Dashboard() {
 
             <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
               <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                  Income vs expenses <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
-                </h3>
                 {monthKeys.length === 0 ? (
-                  <p style={{ fontSize: "14px", color: TOKENS.colors.neutral[600] }}>No transactions recorded for this tax year yet.</p>
-                ) : (
                   <>
+                    <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "8px", fontFamily: "Manrope, sans-serif" }}>
+                      Income vs expenses <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
+                    </h3>
+                    <p style={{ fontSize: "14px", color: TOKENS.colors.neutral[600] }}>No transactions recorded for this tax year yet.</p>
+                  </>
+                ) : (
+                  <ChartFigure
+                    title="Income vs expenses"
+                    subtitle={taxYearLabel}
+                    axisLabel="Received income and recorded expenses (£) by month"
+                    columns={["Received", "Expenses"]}
+                    rows={monthKeys.map((key) => ({ label: monthShort(key), values: [dashIncomeByMonth[key] || 0, dashExpensesByMonth[key] || 0] }))}
+                    legend={[{ label: "Received", color: TOKENS.colors.green[500] }, { label: "Expenses", color: TOKENS.colors.green[200] }]}
+                  >
                     <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
                       {monthKeys.map((key) => (
                         <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                           <div style={{ width: "100%", display: "flex", gap: "4px", alignItems: "flex-end", height: "100%" }}>
-                            <div
-                              title={`Received £${(dashIncomeByMonth[key] || 0).toFixed(2)}`}
-                              style={{ flex: 1, backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashIncomeByMonth[key] || 0) / maxMonthly) * 100}%` }}
-                            ></div>
-                            <div
-                              title={`Expenses £${(dashExpensesByMonth[key] || 0).toFixed(2)}`}
-                              style={{ flex: 1, backgroundColor: TOKENS.colors.green[200], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashExpensesByMonth[key] || 0) / maxMonthly) * 100}%` }}
-                            ></div>
+                            <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashIncomeByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
+                            <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[200], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashExpensesByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
                           </div>
                           <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{monthShort(key)}</span>
                         </div>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: "16px", marginTop: "12px", fontSize: "12px", color: TOKENS.colors.neutral[600] }}>
-                      <span><span style={{ display: "inline-block", width: "10px", height: "10px", backgroundColor: TOKENS.colors.green[500], borderRadius: "2px", marginRight: "4px" }}></span>Received</span>
-                      <span><span style={{ display: "inline-block", width: "10px", height: "10px", backgroundColor: TOKENS.colors.green[200], borderRadius: "2px", marginRight: "4px" }}></span>Expenses</span>
-                    </div>
-                  </>
+                  </ChartFigure>
                 )}
               </div>
 
@@ -435,6 +436,10 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <DeadlineTracker />
             </div>
           </>
         );
@@ -608,60 +613,55 @@ function Dashboard() {
                 {Object.keys(incomeByMonth).length > 0 && (
                   <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
                     <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                      <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                        Income Trend
-                      </h3>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
-                        {Object.entries(incomeByMonth).sort().map(([month, amount]) => {
-                          const maxAmount = Math.max(...Object.values(incomeByMonth));
-                          const percentage = (amount / maxAmount) * 100;
-                          return (
-                            <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                              <div
-                                style={{
-                                  width: "100%",
-                                  backgroundColor: TOKENS.colors.green[500],
-                                  borderTopLeftRadius: "4px",
-                                  borderTopRightRadius: "4px",
-                                  height: `${percentage}%`,
-                                }}
-                                title={`£${amount.toFixed(2)}`}
-                              ></div>
-                              <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{month.slice(5)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {Object.keys(incomeBySource).length > 0 && (
-                      <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                        <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                          Income by Source
-                        </h3>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          {Object.entries(incomeBySource).map(([source, amount]) => {
-                            const total = Object.values(incomeBySource).reduce((a, b) => a + b, 0);
-                            const percentage = (amount / total) * 100;
+                      <ChartFigure
+                        title="Income trend"
+                        subtitle={incomeTaxYearLabel}
+                        axisLabel="Received income (£) by month"
+                        columns={["Received"]}
+                        rows={Object.entries(incomeByMonth).sort().map(([month, amount]) => ({ label: month.slice(5), values: [amount] }))}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
+                          {Object.entries(incomeByMonth).sort().map(([month, amount]) => {
+                            const maxAmount = Math.max(...Object.values(incomeByMonth));
+                            const percentage = (amount / maxAmount) * 100;
                             return (
-                              <div key={source}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>{source}</span>
-                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900] }}>£{amount.toFixed(2)}</span>
-                                </div>
-                                <div style={{ height: "8px", backgroundColor: TOKENS.colors.neutral[200], borderRadius: "4px", overflow: "hidden" }}>
-                                  <div
-                                    style={{
-                                      height: "100%",
-                                      backgroundColor: TOKENS.colors.green[500],
-                                      width: `${percentage}%`,
-                                    }}
-                                  ></div>
-                                </div>
+                              <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                <div style={{ width: "100%", backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${percentage}%` }}></div>
+                                <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{month.slice(5)}</span>
                               </div>
                             );
                           })}
                         </div>
+                      </ChartFigure>
+                    </div>
+
+                    {Object.keys(incomeBySource).length > 0 && (
+                      <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+                        <ChartFigure
+                          title="Income by source"
+                          subtitle={incomeTaxYearLabel}
+                          axisLabel="Received income (£) by source"
+                          columns={["Received"]}
+                          rows={Object.entries(incomeBySource).map(([source, amount]) => ({ label: source, values: [amount] }))}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {Object.entries(incomeBySource).map(([source, amount]) => {
+                              const total = Object.values(incomeBySource).reduce((a, b) => a + b, 0);
+                              const percentage = (amount / total) * 100;
+                              return (
+                                <div key={source}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                    <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>{source}</span>
+                                    <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900] }}>£{amount.toFixed(2)}</span>
+                                  </div>
+                                  <div style={{ height: "8px", backgroundColor: TOKENS.colors.neutral[200], borderRadius: "4px", overflow: "hidden" }}>
+                                    <div style={{ height: "100%", backgroundColor: TOKENS.colors.green[500], width: `${percentage}%` }}></div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </ChartFigure>
                       </div>
                     )}
                   </div>
@@ -799,60 +799,55 @@ function Dashboard() {
                 {Object.keys(expensesByMonth).length > 0 && (
                   <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
                     <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                      <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                        Expense Trend
-                      </h3>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
-                        {Object.entries(expensesByMonth).sort().map(([month, amount]) => {
-                          const maxAmount = Math.max(...Object.values(expensesByMonth));
-                          const percentage = (amount / maxAmount) * 100;
-                          return (
-                            <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                              <div
-                                style={{
-                                  width: "100%",
-                                  backgroundColor: TOKENS.colors.green[500],
-                                  borderTopLeftRadius: "4px",
-                                  borderTopRightRadius: "4px",
-                                  height: `${percentage}%`,
-                                }}
-                                title={`£${amount.toFixed(2)}`}
-                              ></div>
-                              <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{month.slice(5)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {Object.keys(expensesByCategory).length > 0 && (
-                      <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                        <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                          Expenses by Category
-                        </h3>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                          {Object.entries(expensesByCategory).map(([category, amount]) => {
-                            const total = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
-                            const percentage = (amount / total) * 100;
+                      <ChartFigure
+                        title="Expense trend"
+                        subtitle={expenseTaxYearLabel}
+                        axisLabel="Recorded expenses (£) by month"
+                        columns={["Expenses"]}
+                        rows={Object.entries(expensesByMonth).sort().map(([month, amount]) => ({ label: month.slice(5), values: [amount] }))}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
+                          {Object.entries(expensesByMonth).sort().map(([month, amount]) => {
+                            const maxAmount = Math.max(...Object.values(expensesByMonth));
+                            const percentage = (amount / maxAmount) * 100;
                             return (
-                              <div key={category}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>{category}</span>
-                                  <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900] }}>£{amount.toFixed(2)}</span>
-                                </div>
-                                <div style={{ height: "8px", backgroundColor: TOKENS.colors.neutral[200], borderRadius: "4px", overflow: "hidden" }}>
-                                  <div
-                                    style={{
-                                      height: "100%",
-                                      backgroundColor: TOKENS.colors.green[500],
-                                      width: `${percentage}%`,
-                                    }}
-                                  ></div>
-                                </div>
+                              <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                                <div style={{ width: "100%", backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${percentage}%` }}></div>
+                                <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{month.slice(5)}</span>
                               </div>
                             );
                           })}
                         </div>
+                      </ChartFigure>
+                    </div>
+
+                    {Object.keys(expensesByCategory).length > 0 && (
+                      <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
+                        <ChartFigure
+                          title="Expenses by category"
+                          subtitle={expenseTaxYearLabel}
+                          axisLabel="Recorded expenses (£) by category"
+                          columns={["Expenses"]}
+                          rows={Object.entries(expensesByCategory).map(([category, amount]) => ({ label: category, values: [amount] }))}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                            {Object.entries(expensesByCategory).map(([category, amount]) => {
+                              const total = Object.values(expensesByCategory).reduce((a, b) => a + b, 0);
+                              const percentage = (amount / total) * 100;
+                              return (
+                                <div key={category}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                    <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[700] }}>{category}</span>
+                                    <span style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900] }}>£{amount.toFixed(2)}</span>
+                                  </div>
+                                  <div style={{ height: "8px", backgroundColor: TOKENS.colors.neutral[200], borderRadius: "4px", overflow: "hidden" }}>
+                                    <div style={{ height: "100%", backgroundColor: TOKENS.colors.green[500], width: `${percentage}%` }}></div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </ChartFigure>
                       </div>
                     )}
                   </div>
