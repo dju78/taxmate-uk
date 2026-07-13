@@ -488,5 +488,48 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeVisible();
       await expect(page.getByText('Tax Profile Details')).toBeHidden();
     });
+
+    test('blocks Scotland with the correct message', async ({ page }) => {
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await page.getByRole('tab', { name: 'Tax Preview' }).click();
+
+      await page.locator('label:has-text("Tax Region") + select').selectOption('scotland');
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
+
+      await expect(page.getByText(/Scottish tax rules are not supported/)).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeHidden();
+    });
+
+    test('blocks other taxable income with the correct message', async ({ page }) => {
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await page.getByRole('tab', { name: 'Tax Preview' }).click();
+
+      await page.getByLabel('I have other sources of taxable income (e.g. employment, property, dividends).').check();
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
+
+      await expect(page.getByText(/does not currently support: Employment income/)).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeHidden();
+    });
+
+    test('Gift Aid / pension checkbox now has a real, visible effect', async ({ page }) => {
+      const giftAidWarning = /does not account for Gift Aid donations or pension contributions/;
+
+      // Unchecked by default -> no Gift Aid warning.
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await page.getByRole('tab', { name: 'Tax Preview' }).click();
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
+      await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeVisible();
+      await expect(page.getByText(giftAidWarning)).toBeHidden();
+
+      // The profile form is replaced by the results panel with no way back to
+      // it in this view, so re-enter Reports fresh (remounts the component,
+      // resetting local state) to exercise the checked path.
+      await page.getByRole('button', { name: 'Dashboard' }).click();
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await page.getByRole('tab', { name: 'Tax Preview' }).click();
+      await page.getByLabel('I have made Gift Aid donations or personal pension contributions (not accounted for here).').check();
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
+      await expect(page.getByText(giftAidWarning)).toBeVisible();
+    });
   });
 });
