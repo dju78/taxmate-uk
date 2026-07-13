@@ -471,4 +471,22 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await page.emulateMedia({ media: 'screen' });
     });
   });
+
+  test.describe('Phase 10A: Tax Estimate Preview', () => {
+    test('requires mandatory confirmations before showing estimate', async ({ page }) => {
+      await page.getByRole('button', { name: 'Reports' }).click();
+      await page.getByRole('tab', { name: 'Tax Preview' }).click();
+      
+      // The estimate should be hidden initially
+      await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeHidden();
+      await expect(page.getByText('Tax Profile Details')).toBeVisible();
+
+      // Click calculate
+      await page.getByRole('button', { name: 'Calculate Estimate' }).click();
+
+      // The estimate should now be visible
+      await expect(page.getByRole('heading', { name: 'Profit Calculation' })).toBeVisible();
+      await expect(page.getByText('Tax Profile Details')).toBeHidden();
+    });
+  });
 });

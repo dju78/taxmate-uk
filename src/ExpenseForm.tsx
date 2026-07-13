@@ -17,6 +17,7 @@ interface ExpenseFormData {
   amount: string;
   paymentMethod: PaymentMethod;
   notes: string;
+  taxTreatment: 'allowable' | 'not-allowable' | 'needs-review';
 }
 
 type ExpenseFormErrors = Partial<Record<keyof ExpenseFormData, string>>;
@@ -50,6 +51,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
           amount: initialData.amount,
           paymentMethod: isKnownMethod(initialData.paymentMethod ?? '') ? (initialData.paymentMethod as PaymentMethod) : 'Card',
           notes: initialData.notes ?? '',
+          taxTreatment: initialData.taxTreatment ?? 'needs-review',
         }
       : {
           // Use local wall-clock date to avoid BST UTC midnight off-by-one.
@@ -60,6 +62,7 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
           amount: '',
           paymentMethod: 'Card',
           notes: '',
+          taxTreatment: 'needs-review',
         }
   );
 
@@ -283,6 +286,23 @@ export const ExpenseForm = ({ initialData = null, onSubmit, onCancel }: ExpenseF
               ))}
             </select>
             {err('paymentMethod', 'expense-method')}
+          </div>
+
+          <div>
+            <label htmlFor="expense-tax-treatment" className={labelCls}>
+              Tax Treatment *
+            </label>
+            <select
+              id="expense-tax-treatment"
+              name="taxTreatment"
+              value={formData.taxTreatment}
+              onChange={handleChange}
+              className={fieldCls}
+            >
+              <option value="allowable">Allowable expense</option>
+              <option value="not-allowable">Not allowable</option>
+              <option value="needs-review">Needs review</option>
+            </select>
           </div>
 
           <div>
