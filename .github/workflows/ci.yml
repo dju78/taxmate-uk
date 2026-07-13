@@ -15,14 +15,20 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: "npm"
 
-      # Use `npm install` rather than `npm ci`: the project is developed on
-      # Windows and CI runs on Linux, so the lockfile's platform-specific
-      # optional binaries (rollup/esbuild/emnapi) differ and `npm ci` rejects
-      # them. `npm install` resolves the correct binaries for the runner.
+      # npm ci uses package-lock.json directly. The lockfile (v3) includes all
+      # platform-specific optional packages with os/cpu constraints so npm
+      # resolves and skips the Windows-only binaries automatically on Linux.
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --ignore-scripts
+
+      # Run lifecycle scripts that were skipped above (Vite/Tailwind/esbuild
+      # post-install hooks are pure-JS shims; no platform binaries needed for
+      # them — Vite picks the correct native binary at build time via optionality).
+      - name: Run post-install scripts
+        run: npm rebuild
 
       - name: Lint
         run: npm run lint
