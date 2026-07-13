@@ -84,6 +84,7 @@ export function DataAndBackup() {
   const stamp = () => new Date().toISOString().slice(0, 10);
   const handleExportJSON = () => {
     const bundle = storageService.getExportBundle({ selectedTaxYear });
+    storageService.setAppPreferences({ lastExportDate: new Date().toISOString() });
     downloadFile(`taxmate-backup-${stamp()}.json`, JSON.stringify(bundle, null, 2), 'application/json');
   };
   const handleExportCSV = () => {

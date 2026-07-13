@@ -10,6 +10,7 @@ import { useTaxStore, taxYearStartToLabel } from "./store";
 import { TaxYearSelector } from "./TaxYearSelector";
 import { AddTransactionButton } from "./AddTransactionButton";
 import { StorageNoticeBanner } from "./StorageNoticeBanner";
+import { BackupReminderBanner } from "./BackupReminderBanner";
 import { DataAndBackup } from "./DataAndBackup";
 import { IncomeFilters, ExpenseFilters } from "./FilterBar";
 import { filterIncomeRecords, filterExpenseRecords, searchIncomeRecords, searchExpenseRecords, sortIncomeRecords, sortExpenseRecords, uniqueSorted } from "./filters";
@@ -1097,6 +1098,7 @@ function Dashboard() {
       <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50], paddingBottom: isMobile ? "80px" : 0, scrollPaddingBottom: isMobile ? "80px" : 0 }}>
         {/* Persistent, prominent browser-storage notice (all views) */}
         <StorageNoticeBanner />
+        <BackupReminderBanner />
         <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 36px", boxSizing: "border-box" }}>
           {/* Global toolbar (visible across all views) */}
           <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
