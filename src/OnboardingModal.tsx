@@ -1,23 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTaxStore, taxYearStartToLabel, getAvailableTaxYears } from './store';
 import { storageService } from './storage';
 import { Button } from './components';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
 
+// Whether onboarding should open on mount: reads the saved preference once,
+// synchronously, as a lazy initializer rather than an effect (avoids the
+// setState-in-effect anti-pattern and one wasted extra render).
+const shouldOpenOnboarding = (): boolean => {
+  const prefs = storageService.getAppPreferences();
+  const savedVersion = prefs.onboardingVersion || 0;
+  return savedVersion < CURRENT_ONBOARDING_VERSION;
+};
+
 export function OnboardingModal() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean>(shouldOpenOnboarding);
   const [step, setStep] = useState(1);
   const selectedTaxYear = useTaxStore((s) => s.selectedTaxYear);
   const setSelectedTaxYear = useTaxStore((s) => s.setSelectedTaxYear);
   const loadDemo = useTaxStore((s) => s.loadDemo);
-
-  useEffect(() => {
-    const prefs = storageService.getAppPreferences();
-    if (!prefs.onboardingCompleted && !prefs.onboardingSkipped && (prefs.onboardingVersion || 0) < CURRENT_ONBOARDING_VERSION) {
-      setIsOpen(true);
-    }
-  }, []);
 
   if (!isOpen) return null;
 
@@ -27,7 +29,8 @@ export function OnboardingModal() {
     }
     storageService.setAppPreferences({ 
       onboardingCompleted: true, 
-      onboardingVersion: CURRENT_ONBOARDING_VERSION 
+      onboardingVersion: CURRENT_ONBOARDING_VERSION,
+      completedAt: new Date().toISOString()
     });
     setIsOpen(false);
   };
@@ -35,7 +38,8 @@ export function OnboardingModal() {
   const handleSkip = () => {
     storageService.setAppPreferences({ 
       onboardingSkipped: true, 
-      onboardingVersion: CURRENT_ONBOARDING_VERSION 
+      onboardingVersion: CURRENT_ONBOARDING_VERSION,
+      completedAt: new Date().toISOString()
     });
     setIsOpen(false);
   };
@@ -65,7 +69,7 @@ export function OnboardingModal() {
         {step === 1 && (
           <div className="flex flex-col gap-4">
             <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-              <h3 className="font-semibold text-green-900">100% Private & Browser-based</h3>
+              <h3 className="font-semibold text-green-900">Stored on this device</h3>
               <p className="mt-2 text-sm text-green-800">
                 TaxMate does not send your financial data to any cloud servers. 
                 Everything is stored right here in your browser. 

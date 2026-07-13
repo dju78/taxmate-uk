@@ -82,18 +82,30 @@ export function DataAndBackup() {
   };
 
   const stamp = () => new Date().toISOString().slice(0, 10);
+  // lastExportDate is only recorded AFTER the download call completes without
+  // throwing — a failed export must never advance the backup-reminder clock.
   const handleExportJSON = () => {
-    const bundle = storageService.getExportBundle({ selectedTaxYear });
-    storageService.setAppPreferences({ lastExportDate: new Date().toISOString() });
-    downloadFile(`taxmate-backup-${stamp()}.json`, JSON.stringify(bundle, null, 2), 'application/json');
+    try {
+      const bundle = storageService.getExportBundle({ selectedTaxYear });
+      downloadFile(`taxmate-backup-${stamp()}.json`, JSON.stringify(bundle, null, 2), 'application/json');
+      storageService.recordSuccessfulExport();
+      flash('JSON backup exported successfully.');
+    } catch {
+      flash('JSON export failed. Your existing data was not changed.');
+    }
   };
   const handleExportCSV = () => {
-    const taxRef = storageService.getTaxYearStartForYear(selectedTaxYear);
-    const yearTag = taxYearStartToLabel(selectedTaxYear).replace('/', '-');
-    const inc = storageService.recordsToCSV(storageService.getIncomeInTaxYear(income, taxRef));
-    const exp = storageService.recordsToCSV(storageService.getExpensesInTaxYear(expenses, taxRef));
-    downloadFile(`taxmate-income-${yearTag}-${stamp()}.csv`, inc || 'No income records', 'text/csv');
-    downloadFile(`taxmate-expenses-${yearTag}-${stamp()}.csv`, exp || 'No expense records', 'text/csv');
+    try {
+      const taxRef = storageService.getTaxYearStartForYear(selectedTaxYear);
+      const yearTag = taxYearStartToLabel(selectedTaxYear).replace('/', '-');
+      const inc = storageService.recordsToCSV(storageService.getIncomeInTaxYear(income, taxRef));
+      const exp = storageService.recordsToCSV(storageService.getExpensesInTaxYear(expenses, taxRef));
+      downloadFile(`taxmate-income-${yearTag}-${stamp()}.csv`, inc || 'No income records', 'text/csv');
+      downloadFile(`taxmate-expenses-${yearTag}-${stamp()}.csv`, exp || 'No expense records', 'text/csv');
+      flash('CSV export completed successfully.');
+    } catch {
+      flash('CSV export failed. Your existing data was not changed.');
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

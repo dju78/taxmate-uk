@@ -1,55 +1,24 @@
+import { useState } from 'react';
 import { useTaxStore } from './store';
 import { storageService } from './storage';
-import { useState, useEffect } from 'react';
 import { Button } from './components';
 
 export function BackupReminderBanner() {
   const income = useTaxStore((s) => s.income);
   const expenses = useTaxStore((s) => s.expenses);
-  const [show, setShow] = useState(false);
+  // Only tracks "snoozed just now in this render session" so the banner can
+  // disappear immediately on click; the persisted snooze/threshold check is
+  // otherwise a pure derived value recomputed every render (no effect needed).
+  const [dismissedNow, setDismissedNow] = useState(false);
 
-  useEffect(() => {
-    const prefs = storageService.getAppPreferences();
-    const now = new Date();
-
-    if (prefs.backupReminderSnoozedUntil) {
-      const snoozedUntil = new Date(prefs.backupReminderSnoozedUntil);
-      if (now < snoozedUntil) {
-        setShow(false);
-        return;
-      }
-    }
-
-    const totalNonDemo = 
-      income.filter(r => !r.isDemo).length + 
-      expenses.filter(r => !r.isDemo).length;
-
-    if (totalNonDemo < 5) {
-      setShow(false);
-      return;
-    }
-
-    if (prefs.lastExportDate) {
-      const lastExport = new Date(prefs.lastExportDate);
-      const daysSinceExport = (now.getTime() - lastExport.getTime()) / (1000 * 3600 * 24);
-      if (daysSinceExport < 30) {
-        setShow(false);
-        return;
-      }
-    }
-
-    setShow(true);
-  }, [income, expenses]);
+  const reminderDue = !dismissedNow && storageService.shouldShowBackupReminder(income, expenses);
 
   const handleSnooze = () => {
-    // Snooze for 7 days
-    const snoozeUntil = new Date();
-    snoozeUntil.setDate(snoozeUntil.getDate() + 7);
-    storageService.setAppPreferences({ backupReminderSnoozedUntil: snoozeUntil.toISOString() });
-    setShow(false);
+    storageService.snoozeBackupReminder(7);
+    setDismissedNow(true);
   };
 
-  if (!show) return null;
+  if (!reminderDue) return null;
 
   return (
     <div
@@ -62,14 +31,14 @@ export function BackupReminderBanner() {
           <div>
             <p className="text-sm font-bold">Backup recommended</p>
             <p className="text-sm">
-              You have recorded several transactions but haven't exported a backup recently. 
+              You have recorded several transactions but haven&apos;t exported a backup recently.
               Remember that data is only stored in this browser. Go to Settings to export a backup.
             </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={handleSnooze}>
-            Remind me later
+            Remind me in 7 days
           </Button>
         </div>
       </div>

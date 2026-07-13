@@ -407,18 +407,19 @@ export const storageService = {
 
   findDuplicateIncome: (record: Partial<IncomeRecord>, excludeId?: string): IncomeRecord | undefined => {
     const records = storageService.getIncomeRecords();
-    const qAmount = parseFloat(record.amount as string || '0');
+    const qPence = storageService.toPence(record.amount as string || '0');
     const qSource = (record.source || '').trim().toLowerCase();
     const qDate = record.date;
-    const qDesc = (record.description || '').trim().toLowerCase();
+    const qFallbackDesc = (record.description || record.category || '').trim().toLowerCase();
     
-    return records.find(r => 
-      r.id !== excludeId &&
-      r.date === qDate &&
-      parseFloat(r.amount) === qAmount &&
-      (r.source || '').trim().toLowerCase() === qSource &&
-      (r.description || '').trim().toLowerCase() === qDesc
-    );
+    return records.find(r => {
+      const rFallbackDesc = (r.description || r.category || '').trim().toLowerCase();
+      return r.id !== excludeId &&
+        r.date === qDate &&
+        storageService.toPence(r.amount) === qPence &&
+        (r.source || '').trim().toLowerCase() === qSource &&
+        rFallbackDesc === qFallbackDesc;
+    });
   },
 
   addIncomeRecord: (record: Partial<IncomeRecord>): IncomeRecord => {
@@ -594,18 +595,19 @@ export const storageService = {
 
   findDuplicateExpense: (record: Partial<ExpenseRecord>, excludeId?: string): ExpenseRecord | undefined => {
     const records = storageService.getExpenseRecords();
-    const qAmount = parseFloat(record.amount as string || '0');
+    const qPence = storageService.toPence(record.amount as string || '0');
     const qMerchant = (record.merchant || '').trim().toLowerCase();
     const qDate = record.date;
-    const qDesc = (record.description || '').trim().toLowerCase();
+    const qFallbackDesc = (record.description || record.category || '').trim().toLowerCase();
     
-    return records.find(r => 
-      r.id !== excludeId &&
-      r.date === qDate &&
-      parseFloat(r.amount) === qAmount &&
-      (r.merchant || '').trim().toLowerCase() === qMerchant &&
-      (r.description || '').trim().toLowerCase() === qDesc
-    );
+    return records.find(r => {
+      const rFallbackDesc = (r.description || r.category || '').trim().toLowerCase();
+      return r.id !== excludeId &&
+        r.date === qDate &&
+        storageService.toPence(r.amount) === qPence &&
+        (r.merchant || '').trim().toLowerCase() === qMerchant &&
+        rFallbackDesc === qFallbackDesc;
+    });
   },
 
   addExpenseRecord: (record: Partial<ExpenseRecord>): ExpenseRecord => {
@@ -1019,5 +1021,43 @@ export const storageService = {
     } catch {
       // ignore
     }
+  },
+
+  // BACKUP REMINDER
+  // Pure predicate (no state, no effect) so it can be computed directly during
+  // render and unit-tested in isolation. Trigger only when:
+  //   (a) at least 10 non-demo records exist and no successful JSON backup
+  //       has ever been recorded, OR
+  //   (b) more than 30 days have passed since the last successful backup.
+  // Demo-only data never counts toward the threshold.
+  shouldShowBackupReminder: (
+    income: { isDemo?: boolean }[],
+    expenses: { isDemo?: boolean }[],
+    now: Date = new Date()
+  ): boolean => {
+    const prefs = storageService.getAppPreferences();
+    if (prefs.backupReminderSnoozedUntil) {
+      const snoozedUntil = new Date(prefs.backupReminderSnoozedUntil);
+      if (now < snoozedUntil) return false;
+    }
+    const totalNonDemo =
+      income.filter((r) => !r.isDemo).length + expenses.filter((r) => !r.isDemo).length;
+    if (!prefs.lastExportDate) {
+      return totalNonDemo >= 10;
+    }
+    const daysSinceExport = (now.getTime() - new Date(prefs.lastExportDate).getTime()) / 86_400_000;
+    return daysSinceExport > 30;
+  },
+
+  snoozeBackupReminder: (days = 7, now: Date = new Date()): void => {
+    const until = new Date(now);
+    until.setDate(until.getDate() + days);
+    storageService.setAppPreferences({ backupReminderSnoozedUntil: until.toISOString() });
+  },
+
+  // Record a SUCCESSFUL JSON export. Callers must only invoke this after the
+  // download has actually been produced (never on a thrown/failed export).
+  recordSuccessfulExport: (now: Date = new Date()): void => {
+    storageService.setAppPreferences({ lastExportDate: now.toISOString() });
   },
 };
