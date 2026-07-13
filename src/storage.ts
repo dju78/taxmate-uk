@@ -1003,6 +1003,61 @@ export const storageService = {
     return { income: income.length, expenses: expenses.length };
   },
 
+  // Pure preview of what an import will do, computed against current storage.
+  // Duplicate-ID matches are exact (hard) — a merge always skips them.
+  // "Probable duplicates" are CONTENT matches (via findDuplicateIncome/Expense)
+  // on incoming records with an id NOT already present — these are warnings
+  // only; merge still adds them (never silently, the user sees the count).
+  previewImport: (
+    mode: 'restore' | 'merge',
+    income: IncomeRecord[],
+    expenses: ExpenseRecord[]
+  ): {
+    toAddIncome: number;
+    toSkipIncome: number; // duplicate id, merge only
+    probableDuplicateIncome: number; // content match, different id
+    toAddExpenses: number;
+    toSkipExpenses: number;
+    probableDuplicateExpenses: number;
+    toReplace: number; // restore only: existing records that will be discarded
+  } => {
+    const existingIncome = storageService.getIncomeRecords();
+    const existingExpenses = storageService.getExpenseRecords();
+
+    if (mode === 'restore') {
+      return {
+        toAddIncome: income.length,
+        toSkipIncome: 0,
+        probableDuplicateIncome: 0,
+        toAddExpenses: expenses.length,
+        toSkipExpenses: 0,
+        probableDuplicateExpenses: 0,
+        toReplace: existingIncome.length + existingExpenses.length,
+      };
+    }
+
+    const incomeIds = new Set(existingIncome.map((r) => r.id));
+    const expenseIds = new Set(existingExpenses.map((r) => r.id));
+    const newIncome = income.filter((r) => !incomeIds.has(r.id));
+    const newExpenses = expenses.filter((r) => !expenseIds.has(r.id));
+    const probableDuplicateIncome = newIncome.filter(
+      (r) => storageService.findDuplicateIncome(r, r.id) !== undefined
+    ).length;
+    const probableDuplicateExpenses = newExpenses.filter(
+      (r) => storageService.findDuplicateExpense(r, r.id) !== undefined
+    ).length;
+
+    return {
+      toAddIncome: newIncome.length,
+      toSkipIncome: income.length - newIncome.length,
+      probableDuplicateIncome,
+      toAddExpenses: newExpenses.length,
+      toSkipExpenses: expenses.length - newExpenses.length,
+      probableDuplicateExpenses,
+      toReplace: 0,
+    };
+  },
+
   // PREFERENCES
   getAppPreferences: (): AppPreferences => {
     try {

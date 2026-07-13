@@ -96,17 +96,25 @@ export interface ExpenseCalcRecord {
   category?: string;
 }
 
-export type IncomeSortOption = 
-  | 'date-desc' | 'date-asc' 
-  | 'amount-desc' | 'amount-asc' 
-  | 'source-asc' | 'source-desc' 
-  | 'status-overdue';
+export const INCOME_SORT_OPTIONS = [
+  'date-desc', 'date-asc',
+  'amount-desc', 'amount-asc',
+  'source-asc', 'source-desc',
+  'status-overdue',
+] as const;
+export type IncomeSortOption = (typeof INCOME_SORT_OPTIONS)[number];
+export const isIncomeSortOption = (v: unknown): v is IncomeSortOption =>
+  typeof v === 'string' && (INCOME_SORT_OPTIONS as readonly string[]).includes(v);
 
-export type ExpenseSortOption = 
-  | 'date-desc' | 'date-asc' 
-  | 'amount-desc' | 'amount-asc' 
-  | 'merchant-asc' | 'merchant-desc' 
-  | 'category-asc';
+export const EXPENSE_SORT_OPTIONS = [
+  'date-desc', 'date-asc',
+  'amount-desc', 'amount-asc',
+  'merchant-asc', 'merchant-desc',
+  'category-asc',
+] as const;
+export type ExpenseSortOption = (typeof EXPENSE_SORT_OPTIONS)[number];
+export const isExpenseSortOption = (v: unknown): v is ExpenseSortOption =>
+  typeof v === 'string' && (EXPENSE_SORT_OPTIONS as readonly string[]).includes(v);
 
 export interface AppPreferences {
   selectedTaxYear?: number;

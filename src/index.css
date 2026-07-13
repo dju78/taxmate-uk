@@ -50,3 +50,39 @@ body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* Print stylesheet (Reports view: "Print / Save as PDF").
+   Element-level `print:hidden` / `print:block` Tailwind utilities control
+   which sections appear; this stylesheet handles page setup and undoes the
+   app shell's fixed-viewport flex layout, which would otherwise clip
+   multi-page content to a single page. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body {
+    display: block !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Report cards should not force a page break inside a single KPI/table block. */
+  .reports-view [class*="rounded-xl"],
+  .reports-view [class*="rounded-2xl"],
+  .reports-view [class*="rounded-lg"] {
+    break-inside: avoid;
+  }
+}

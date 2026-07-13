@@ -95,13 +95,20 @@ describe('hasInvalidDateRange', () => {
   });
 });
 
-describe('invalid date range yields no records', () => {
-  it('income filter returns [] for an invalid range', () => {
-    expect(filterIncomeRecords(income, { ...defaultIncomeFilters, dateFrom: '2026-07-20', dateTo: '2026-07-10' })).toEqual([]);
+describe('invalid date range does not empty the ledger', () => {
+  // Corrected behaviour: an invalid range (From > To) must not be applied and
+  // must not produce a misleading empty state. The date constraint is simply
+  // ignored until corrected; every other active filter still applies.
+  it('income filter ignores the date constraint but keeps other filters active', () => {
+    const invalidRange = { ...defaultIncomeFilters, dateFrom: '2026-07-20', dateTo: '2026-07-10' };
+    expect(filterIncomeRecords(income, invalidRange)).toHaveLength(3); // all records preserved
+    expect(filterIncomeRecords(income, { ...invalidRange, source: 'Alpha' }).map((r) => r.id)).toEqual(['1', '3']);
   });
 
-  it('expense filter returns [] for an invalid range', () => {
-    expect(filterExpenseRecords(expenses, { ...defaultExpenseFilters, dateFrom: '2026-07-20', dateTo: '2026-07-10' })).toEqual([]);
+  it('expense filter ignores the date constraint but keeps other filters active', () => {
+    const invalidRange = { ...defaultExpenseFilters, dateFrom: '2026-07-20', dateTo: '2026-07-10' };
+    expect(filterExpenseRecords(expenses, invalidRange)).toHaveLength(3); // all records preserved
+    expect(filterExpenseRecords(expenses, { ...invalidRange, category: 'Travel' }).map((r) => r.id)).toEqual(['e1', 'e3']);
   });
 });
 

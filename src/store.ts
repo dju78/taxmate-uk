@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { storageService, SELECTED_TAX_YEAR_KEY } from './storage';
+import { isIncomeSortOption, isExpenseSortOption } from './types';
 import type { IncomeRecord, ExpenseRecord, ExportPreferences, IncomeSortOption, ExpenseSortOption } from './types';
 import {
   defaultIncomeFilters,
@@ -85,8 +86,11 @@ export const useTaxStore = create<TaxStore>((set, get) => {
     income: storageService.getIncomeRecords(),
     expenses: storageService.getExpenseRecords(),
     selectedTaxYear: loadSelectedYear(),
-    incomeSort: prefs.incomeSort || 'date-desc',
-    expenseSort: prefs.expenseSort || 'date-desc',
+    // Defensive fallback: a corrupted/outdated persisted value (e.g. a sort
+    // option removed in a later version) must not silently break sorting —
+    // fall back to the safe default instead.
+    incomeSort: isIncomeSortOption(prefs.incomeSort) ? prefs.incomeSort : 'date-desc',
+    expenseSort: isExpenseSortOption(prefs.expenseSort) ? prefs.expenseSort : 'date-desc',
     incomeSearch: '',
     expenseSearch: '',
     incomeFilters: defaultIncomeFilters,

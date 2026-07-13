@@ -155,6 +155,13 @@ export function DataAndBackup() {
       ? taxYearStartToLabel(preview.preferences.selectedTaxYear)
       : null;
 
+  // Derived (not state + effect): recomputed from the current preview and the
+  // selected import mode on every render.
+  const previewStats =
+    preview && preview.ok
+      ? storageService.previewImport(importMode, preview.income, preview.expenses)
+      : null;
+
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-6">
       <h2 className="mb-2 text-lg font-bold text-neutral-900">Data &amp; backup</h2>
@@ -272,11 +279,38 @@ export function DataAndBackup() {
               </label>
             </fieldset>
 
-            {importMode === 'restore' && (
+            {previewStats && importMode === 'restore' && (
               <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Restore will overwrite your current {income.length} income and {expenses.length}{' '}
-                expense record(s). Export a backup first if you might need them.
+                Restore will replace your current {income.length} income and {expenses.length}{' '}
+                expense record(s) ({previewStats.toReplace} total) with the {previewStats.toAddIncome}{' '}
+                income and {previewStats.toAddExpenses} expense record(s) in this backup. Export a
+                backup first if you might need what you have now.
               </p>
+            )}
+
+            {previewStats && importMode === 'merge' && (
+              <ul className="mt-3 space-y-1 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+                <li>
+                  <strong>{previewStats.toAddIncome + previewStats.toAddExpenses}</strong> record(s)
+                  will be added ({previewStats.toAddIncome} income, {previewStats.toAddExpenses}{' '}
+                  expense).
+                </li>
+                {(previewStats.toSkipIncome > 0 || previewStats.toSkipExpenses > 0) && (
+                  <li>
+                    <strong>{previewStats.toSkipIncome + previewStats.toSkipExpenses}</strong> record(s)
+                    will be skipped — same id already exists ({previewStats.toSkipIncome} income,{' '}
+                    {previewStats.toSkipExpenses} expense).
+                  </li>
+                )}
+                {(previewStats.probableDuplicateIncome > 0 || previewStats.probableDuplicateExpenses > 0) && (
+                  <li className="text-amber-700">
+                    ⚠ <strong>{previewStats.probableDuplicateIncome + previewStats.probableDuplicateExpenses}</strong>{' '}
+                    record(s) look like probable duplicates of records you already have (same date,
+                    amount and source/merchant, different id) — they will still be added under Merge.
+                    Use Restore if you want to replace rather than merge.
+                  </li>
+                )}
+              </ul>
             )}
           </>
         ) : (

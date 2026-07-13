@@ -76,7 +76,7 @@ describe('IncomeFilters component', () => {
       />
     );
     const alert = screen.getByRole('alert');
-    expect(alert.textContent).toContain('Start date must be on or before the end date.');
+    expect(alert.textContent).toContain('The From date cannot be later than the To date.');
     const from = screen.getByLabelText('From');
     expect(from.getAttribute('aria-invalid')).toBe('true');
     expect(from.getAttribute('aria-describedby')).toBe(alert.id);
@@ -104,6 +104,6 @@ describe('ExpenseFilters component', () => {
         onSortChange={vi.fn()}
       />
     );
-    expect(screen.getByRole('alert').textContent).toContain('Start date must be on or before the end date.');
+    expect(screen.getByRole('alert').textContent).toContain('The From date cannot be later than the To date.');
   });
 });

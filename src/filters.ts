@@ -77,16 +77,21 @@ const inDateRange = (date: string, from: string, to: string): boolean => {
   return true;
 };
 
+// When the range is invalid (From later than To), the date constraint is NOT
+// applied at all — every other active filter (status/source/category/search)
+// still narrows the ledger normally. This avoids both (a) silently discarding
+// the whole ledger and (b) a misleading "no records" empty state caused
+// purely by an impossible date range the user hasn't finished correcting.
 export function filterIncomeRecords<T extends { date: string; status?: string; source?: string; category?: string }>(
   records: T[],
   f: IncomeFilterState
 ): T[] {
-  if (hasInvalidDateRange(f.dateFrom, f.dateTo)) return [];
+  const ignoreDateRange = hasInvalidDateRange(f.dateFrom, f.dateTo);
   return records.filter((r) => {
     if (f.status !== 'all' && storageService.normaliseIncomeStatus(r.status) !== f.status) return false;
     if (f.source !== 'all' && (r.source ?? '') !== f.source) return false;
     if (f.category !== 'all' && (r.category ?? '') !== f.category) return false;
-    if (!inDateRange(r.date, f.dateFrom, f.dateTo)) return false;
+    if (!ignoreDateRange && !inDateRange(r.date, f.dateFrom, f.dateTo)) return false;
     return true;
   });
 }
@@ -95,10 +100,10 @@ export function filterExpenseRecords<T extends { date: string; category?: string
   records: T[],
   f: ExpenseFilterState
 ): T[] {
-  if (hasInvalidDateRange(f.dateFrom, f.dateTo)) return [];
+  const ignoreDateRange = hasInvalidDateRange(f.dateFrom, f.dateTo);
   return records.filter((r) => {
     if (f.category !== 'all' && (r.category ?? '') !== f.category) return false;
-    if (!inDateRange(r.date, f.dateFrom, f.dateTo)) return false;
+    if (!ignoreDateRange && !inDateRange(r.date, f.dateFrom, f.dateTo)) return false;
     return true;
   });
 }

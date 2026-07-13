@@ -11,7 +11,7 @@ const selectCls =
 const labelCls = 'flex flex-col gap-1 text-xs font-semibold text-neutral-500';
 const resetCls =
   'rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-semibold text-neutral-700 outline-none hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1';
-const DATE_RANGE_ERROR = 'Start date must be on or before the end date.';
+const DATE_RANGE_ERROR = 'The From date cannot be later than the To date.';
 
 const STATUS_OPTIONS: { value: IncomeStatusFilter; label: string }[] = [
   { value: 'all', label: 'All' },

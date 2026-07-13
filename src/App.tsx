@@ -980,7 +980,7 @@ function Dashboard() {
     <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", width: "100%", height: "100vh", backgroundColor: TOKENS.colors.neutral[50], fontFamily: "Inter, sans-serif" }}>
       {/* Mobile top bar */}
       {isMobile && (
-        <header style={{ flexShrink: 0, backgroundColor: TOKENS.colors.neutral[900], color: "white", display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px" }}>
+        <header className="print:hidden" style={{ flexShrink: 0, backgroundColor: TOKENS.colors.neutral[900], color: "white", display: "flex", alignItems: "center", gap: "10px", padding: "14px 16px" }}>
           <div style={{ width: "30px", height: "30px", backgroundColor: TOKENS.colors.green[500], borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Icons.Logo />
           </div>
@@ -992,6 +992,7 @@ function Dashboard() {
       {!isMobile && (
         <aside
           aria-label="Primary"
+          className="print:hidden"
           style={{
             width: `${sidebarWidth}px`,
             flex: `0 0 ${sidebarWidth}px`,
@@ -1075,7 +1076,7 @@ function Dashboard() {
         <OnboardingModal />
         <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 36px", boxSizing: "border-box" }}>
           {/* Global toolbar (visible across all views) */}
-          <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+          <div className="mb-6 flex flex-wrap items-center justify-end gap-3 print:hidden">
             {hasDemoData && (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                 Demo data loaded
@@ -1097,6 +1098,7 @@ function Dashboard() {
       {isMobile && (
         <nav
           aria-label="Primary"
+          className="print:hidden"
           style={{
             position: "fixed",
             bottom: 0,

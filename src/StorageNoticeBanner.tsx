@@ -5,7 +5,7 @@ export function StorageNoticeBanner() {
     <div
       role="note"
       aria-label="Storage notice"
-      className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 sm:px-6"
+      className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 sm:px-6 print:hidden"
     >
       <div className="mx-auto flex max-w-[1440px] items-start gap-3">
         <span aria-hidden="true" className="mt-0.5 text-lg leading-none">📌</span>
