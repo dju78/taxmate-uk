@@ -1,11 +1,27 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
+  let testErrors: string[] = [];
+
   test.beforeEach(async ({ page }) => {
+    testErrors = [];
+    page.on('pageerror', (err) => testErrors.push(`Page error: ${err.message}`));
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') testErrors.push(`Console error: ${msg.text()}`);
+    });
+    page.on('requestfailed', (req) => testErrors.push(`Request failed: ${req.url()}`));
+
     // Clear localStorage before each test to ensure a clean state
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+  });
+
+  test.afterEach(() => {
+    // Some external fonts or icons might cause a network failure that we don't control, but we enforce no errors from our bundle.
+    // Ensure there are no application errors.
+    const appErrors = testErrors.filter(e => !e.includes('favicon.ico') && !e.includes('fonts.googleapis.com'));
+    expect(appErrors).toEqual([]);
   });
 
   test.describe('CRUD Operations', () => {
@@ -27,8 +43,25 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await expect(page.locator('span', { hasText: 'Test Client' }).first()).toBeVisible();
       await expect(page.getByText('£1500.50').first()).toBeVisible();
 
-      // Edit
-      await page.getByRole('button', { name: 'Edit income from Test Client' }).click({ force: true });
+      // Edit and Layout Check
+      const editBtn = page.getByRole('button', { name: 'Edit income from Test Client' });
+      const deleteBtn = page.getByRole('button', { name: 'Delete income from Test Client' });
+      await expect(editBtn).toBeVisible();
+      await expect(deleteBtn).toBeVisible();
+      
+      // Prove that the Edit and Delete controls are not obscured by mobile navigation
+      const nav = page.locator('nav[aria-label="Primary"]');
+      if (await nav.isVisible()) {
+        await editBtn.scrollIntoViewIfNeeded();
+        await deleteBtn.scrollIntoViewIfNeeded();
+        const navBox = await nav.boundingBox();
+        const editBox = await editBtn.boundingBox();
+        const deleteBox = await deleteBtn.boundingBox();
+        expect(editBox!.y + editBox!.height).toBeLessThanOrEqual(navBox!.y);
+        expect(deleteBox!.y + deleteBox!.height).toBeLessThanOrEqual(navBox!.y);
+      }
+
+      await editBtn.click();
       await page.locator('input[name="source"]').fill('Updated Client');
       await page.locator('input[name="amount"]').fill('2000.00');
       await page.getByRole('button', { name: 'Update Income', exact: true }).click();
@@ -37,7 +70,7 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await expect(page.getByText('£2000.00').first()).toBeVisible();
 
       // Delete
-      await page.getByRole('button', { name: 'Delete income from Updated Client' }).click({ force: true });
+      await page.getByRole('button', { name: 'Delete income from Updated Client' }).click();
       await page.getByRole('button', { name: 'Delete', exact: true }).click(); // Confirmation
       await expect(page.locator('span', { hasText: 'Updated Client' })).not.toBeVisible();
     });
@@ -54,13 +87,13 @@ test.describe('Phase 8: Comprehensive Playwright E2E Tests', () => {
       await expect(page.locator('span', { hasText: 'Office Supplies Co' }).first()).toBeVisible();
 
       // Edit
-      await page.getByRole('button', { name: 'Edit expense from Office Supplies Co' }).click({ force: true });
+      await page.getByRole('button', { name: 'Edit expense from Office Supplies Co' }).click();
       await page.locator('input[name="merchant"]').fill('Tech Store');
       await page.getByRole('button', { name: 'Update Expense', exact: true }).click();
       await expect(page.locator('span', { hasText: 'Tech Store' }).first()).toBeVisible();
 
       // Delete
-      await page.getByRole('button', { name: 'Delete expense from Tech Store' }).click({ force: true });
+      await page.getByRole('button', { name: 'Delete expense from Tech Store' }).click();
       await page.getByRole('button', { name: 'Delete', exact: true }).click();
       await expect(page.locator('span', { hasText: 'Tech Store' })).not.toBeVisible();
     });

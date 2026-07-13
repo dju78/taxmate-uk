@@ -9,7 +9,4 @@ export default defineConfig({
     // Ensure a single React instance (avoids "Invalid hook call" from duplicates).
     dedupe: ['react', 'react-dom'],
   },
-  test: {
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/**'],
-  },
 })

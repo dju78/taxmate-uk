@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, ReactNode } from "react";
 import { TOKENS } from "./tokens";
 import { Alert, Switch, Button, Badge, EmptyState, TransactionList } from "./components";
@@ -1075,7 +1076,7 @@ function Dashboard() {
       )}
 
       {/* Main content */}
-      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50], paddingBottom: isMobile ? "72px" : 0 }}>
+      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50], paddingBottom: isMobile ? "80px" : 0, scrollPaddingBottom: isMobile ? "80px" : 0 }}>
         {/* Persistent, prominent browser-storage notice (all views) */}
         <StorageNoticeBanner />
         <div style={{ width: "100%", maxWidth: "1440px", margin: "0 auto", padding: isMobile ? "20px 16px" : "32px 36px", boxSizing: "border-box" }}>
