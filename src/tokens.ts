@@ -13,6 +13,9 @@ export const TOKENS = {
       700: "#3A4148",
       900: "#1A1F24",
     },
+    // Cool-toned cream used as the Dashboard's page background — a warmer
+    // alternative to neutral[50] for white cards to sit against.
+    cream: "#F6F4EE",
     green: {
       50: "#EAF6EE",
       100: "#D4EEDB",

@@ -375,6 +375,19 @@ function Dashboard() {
           return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short" });
         };
 
+        const recentTransactions = [
+          ...incomeRecords.filter((r) => storageService.isInActiveTaxYear(r.date, taxRef)).map((r) => ({
+            id: r.id, date: r.date, label: r.source, amount: parseFloat(r.amount) || 0, type: "income" as const,
+          })),
+          ...expenseRecords.filter((r) => storageService.isInActiveTaxYear(r.date, taxRef)).map((r) => ({
+            id: r.id, date: r.date, label: r.merchant, amount: parseFloat(r.amount) || 0, type: "expense" as const,
+          })),
+        ]
+          .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0))
+          .slice(0, 6);
+        const formatShortDate = (d: string) =>
+          new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
         return (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
@@ -387,20 +400,20 @@ function Dashboard() {
               <div style={{ width: "40px", height: "40px", backgroundColor: TOKENS.colors.green[200], borderRadius: "50%" }}></div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "16px", marginBottom: "24px" }}>
-              <div style={{ backgroundColor: TOKENS.colors.green[500], color: "white", borderRadius: "14px", padding: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: kpiCols, gap: "20px", marginBottom: "28px" }}>
+              <div style={{ backgroundColor: TOKENS.colors.green[500], color: "white", borderRadius: "16px", padding: "24px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", opacity: 0.9 }}>Recorded cash surplus</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>£{netProfitYTD.toFixed(2)}</div>
                 <div style={{ fontSize: "13px", opacity: 0.85, marginTop: "8px" }}>Received income − all recorded expenses · {taxYearLabel}</div>
               </div>
-              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "16px", padding: "24px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[600] }}>Income received YTD</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
                   £{incomeReceivedYTD.toFixed(2)}
                 </div>
                 <div style={{ fontSize: "13px", color: TOKENS.colors.neutral[600], marginTop: "8px" }}>Tax year {taxYearLabel}</div>
               </div>
-              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "20px" }}>
+              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "16px", padding: "24px" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[600] }}>Expenses YTD</div>
                 <div style={{ fontSize: "30px", fontWeight: "800", color: TOKENS.colors.neutral[900], marginTop: "8px", fontFamily: "Manrope, sans-serif" }}>
                   £{expensesYTD.toFixed(2)}
@@ -409,62 +422,97 @@ function Dashboard() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "16px" }}>
-              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px" }}>
-                {monthKeys.length === 0 ? (
-                  <>
-                    <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "8px", fontFamily: "Manrope, sans-serif" }}>
-                      Income vs expenses <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
-                    </h2>
-                    <p style={{ fontSize: "14px", color: TOKENS.colors.neutral[600] }}>No transactions recorded for this tax year yet.</p>
-                  </>
-                ) : (
-                  <ChartFigure
-                    title="Income vs expenses"
-                    subtitle={taxYearLabel}
-                    axisLabel="Received income and recorded expenses (£) by month"
-                    columns={["Received", "Expenses"]}
-                    rows={monthKeys.map((key) => ({ label: monthShort(key), values: [dashIncomeByMonth[key] || 0, dashExpensesByMonth[key] || 0] }))}
-                    legend={[{ label: "Received", color: TOKENS.colors.green[500] }, { label: "Expenses", color: TOKENS.colors.green[200] }]}
-                  >
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
-                      {monthKeys.map((key) => (
-                        <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                          <div style={{ width: "100%", display: "flex", gap: "4px", alignItems: "flex-end", height: "100%" }}>
-                            <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashIncomeByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
-                            <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[200], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashExpensesByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1.4fr 1fr", gap: "20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", minWidth: 0 }}>
+                <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "16px", padding: "24px" }}>
+                  {monthKeys.length === 0 ? (
+                    <>
+                      <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "8px", fontFamily: "Manrope, sans-serif" }}>
+                        Income vs expenses <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
+                      </h2>
+                      <p style={{ fontSize: "14px", color: TOKENS.colors.neutral[600] }}>No transactions recorded for this tax year yet.</p>
+                    </>
+                  ) : (
+                    <ChartFigure
+                      title="Income vs expenses"
+                      subtitle={taxYearLabel}
+                      axisLabel="Received income and recorded expenses (£) by month"
+                      columns={["Received", "Expenses"]}
+                      rows={monthKeys.map((key) => ({ label: monthShort(key), values: [dashIncomeByMonth[key] || 0, dashExpensesByMonth[key] || 0] }))}
+                      legend={[{ label: "Received", color: TOKENS.colors.green[500] }, { label: "Expenses", color: TOKENS.colors.green[200] }]}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", height: "160px" }}>
+                        {monthKeys.map((key) => (
+                          <div key={key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "100%", display: "flex", gap: "4px", alignItems: "flex-end", height: "100%" }}>
+                              <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[500], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashIncomeByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
+                              <div style={{ flex: 1, backgroundColor: TOKENS.colors.green[200], borderTopLeftRadius: "4px", borderTopRightRadius: "4px", height: `${((dashExpensesByMonth[key] || 0) / maxMonthly) * 100}%` }}></div>
+                            </div>
+                            <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{monthShort(key)}</span>
                           </div>
-                          <span style={{ fontSize: "12px", color: TOKENS.colors.neutral[600] }}>{monthShort(key)}</span>
+                        ))}
+                      </div>
+                    </ChartFigure>
+                  )}
+                </div>
+
+                <DeadlineTracker selectedTaxYearLabel={selectedTaxYearLabel} />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px", minWidth: 0 }}>
+                <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "16px", padding: "24px" }}>
+                  <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                    Invoicing <span style={{ fontSize: "13px", fontWeight: "500", color: TOKENS.colors.neutral[500] }}>· {taxYearLabel}</span>
+                  </h2>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Outstanding</span>
+                      <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.semantic.warning }}>£{storageService.calculateOutstanding(taxRef, incomeRecords).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Overdue</span>
+                      <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.semantic.danger }}>£{storageService.calculateOverdue(taxRef, incomeRecords).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${TOKENS.colors.neutral[200]}`, paddingTop: "12px" }}>
+                      <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Invoiced total</span>
+                      <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.neutral[900] }}>£{storageService.calculateTotalInvoiced(taxRef, incomeRecords).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "16px", padding: "24px" }}>
+                  <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
+                    Recent transactions
+                  </h2>
+                  {recentTransactions.length === 0 ? (
+                    <p style={{ fontSize: "14px", color: TOKENS.colors.neutral[600] }}>No transactions recorded for this tax year yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {recentTransactions.map((t) => (
+                        <div key={t.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0", borderTop: `1px solid ${TOKENS.colors.neutral[100]}` }}>
+                          <div
+                            style={{
+                              width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
+                              backgroundColor: t.type === "income" ? TOKENS.colors.green[100] : TOKENS.colors.neutral[100],
+                              color: t.type === "income" ? TOKENS.colors.green[700] : TOKENS.colors.neutral[600],
+                              display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "700",
+                            }}
+                          >
+                            {t.type === "income" ? "↑" : "↓"}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", fontWeight: "600", color: TOKENS.colors.neutral[900], overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.label}</div>
+                            <div style={{ fontSize: "12px", color: TOKENS.colors.neutral[500] }}>{formatShortDate(t.date)}</div>
+                          </div>
+                          <div style={{ fontSize: "13px", fontWeight: "700", color: t.type === "income" ? TOKENS.colors.green[700] : TOKENS.colors.neutral[900], flexShrink: 0 }}>
+                            {t.type === "income" ? "+" : "−"}£{t.amount.toFixed(2)}
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </ChartFigure>
-                )}
-              </div>
-
-              <div style={{ backgroundColor: "white", border: `1px solid ${TOKENS.colors.neutral[200]}`, borderRadius: "14px", padding: "24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px", fontFamily: "Manrope, sans-serif" }}>
-                  Tax year {taxYearLabel}
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Outstanding</span>
-                    <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.semantic.warning }}>£{storageService.calculateOutstanding(taxRef, incomeRecords).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Overdue</span>
-                    <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.semantic.danger }}>£{storageService.calculateOverdue(taxRef, incomeRecords).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${TOKENS.colors.neutral[200]}`, paddingTop: "12px" }}>
-                    <span style={{ fontSize: "13px", color: TOKENS.colors.neutral[600] }}>Invoiced total</span>
-                    <span style={{ fontSize: "13px", fontWeight: "700", color: TOKENS.colors.neutral[900] }}>£{storageService.calculateTotalInvoiced(taxRef, incomeRecords).toFixed(2)}</span>
-                  </div>
+                  )}
                 </div>
               </div>
-            </div>
-
-            <div style={{ marginTop: "16px" }}>
-              <DeadlineTracker selectedTaxYearLabel={selectedTaxYearLabel} />
             </div>
           </>
         );
@@ -1083,7 +1131,7 @@ function Dashboard() {
       )}
 
       {/* Main content */}
-      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: TOKENS.colors.neutral[50], paddingBottom: isMobile ? "80px" : 0, scrollPaddingBottom: isMobile ? "80px" : 0 }}>
+      <main style={{ flex: 1, minWidth: 0, overflowY: "auto", backgroundColor: activeNav === "dashboard" ? TOKENS.colors.cream : TOKENS.colors.neutral[50], paddingBottom: isMobile ? "80px" : 0, scrollPaddingBottom: isMobile ? "80px" : 0 }}>
         {/* Persistent, prominent browser-storage notice (all views) */}
         <StorageNoticeBanner />
         <BackupReminderBanner />
