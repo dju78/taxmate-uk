@@ -107,11 +107,16 @@ export interface PayeInput {
   taxYear: string;
   taxRegion: TaxRegion;
   grossSalary: number; // in pence, annual
+  taxCode?: string; // optional UK tax code, e.g. "1257L", "BR", "D0", "D1", "0T", "K475", "NT" — overrides the standard Personal Allowance rules when set
+  pensionContributionPercent?: number; // 0-10, whole number percent of gross salary (assumed salary sacrifice)
 }
 
 export interface PayeResult {
   taxYear: string;
   grossSalary: number; // in pence
+  taxCode?: string; // the normalised tax code actually applied, if any
+  pensionContributionPercent: number;
+  pensionContribution: number; // in pence
 
   personalAllowanceUsed: number; // in pence
   taxableIncome: number; // in pence

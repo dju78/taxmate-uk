@@ -10,7 +10,8 @@ export interface IncomeTaxResult {
 
 export function calculateIncomeTax(
   taxableTradingProfit: number, // Total adjusted net income
-  rules: TaxRules
+  rules: TaxRules,
+  allowanceOverride?: number // in pence; when provided, bypasses the standard PA + taper (used for explicit UK tax codes). Can be negative (K codes).
 ): IncomeTaxResult {
   if (taxableTradingProfit <= 0) {
     return {
@@ -26,18 +27,28 @@ export function calculateIncomeTax(
     };
   }
 
-  // 1. Calculate Personal Allowance (with taper)
-  let adjustedPersonalAllowance = rules.personalAllowance;
-  if (taxableTradingProfit > rules.personalAllowanceTaperThreshold) {
-    const excess = taxableTradingProfit - rules.personalAllowanceTaperThreshold;
-    // Taper is £1 for every £2 above threshold. So we divide the excess pence by 2.
-    // HMRC normally floors this reduction (e.g. £100,001 excess is £1 => £0.50 reduction => actually they round down the reduction or round up?
-    // Usually it's strictly divided by 2. Let's use floorPence for safety or strict division.
-    const reduction = floorPence(excess / 2);
-    adjustedPersonalAllowance = Math.max(0, rules.personalAllowance - reduction);
+  let personalAllowanceUsed: number;
+  if (allowanceOverride !== undefined) {
+    // A tax code's allowance is used as-is: positive allowances still can't
+    // shelter more than the income itself, but negative (K code) allowances
+    // add to taxable income rather than being capped.
+    personalAllowanceUsed = allowanceOverride >= 0
+      ? Math.min(taxableTradingProfit, allowanceOverride)
+      : allowanceOverride;
+  } else {
+    // 1. Calculate Personal Allowance (with taper)
+    let adjustedPersonalAllowance = rules.personalAllowance;
+    if (taxableTradingProfit > rules.personalAllowanceTaperThreshold) {
+      const excess = taxableTradingProfit - rules.personalAllowanceTaperThreshold;
+      // Taper is £1 for every £2 above threshold. So we divide the excess pence by 2.
+      // HMRC normally floors this reduction (e.g. £100,001 excess is £1 => £0.50 reduction => actually they round down the reduction or round up?
+      // Usually it's strictly divided by 2. Let's use floorPence for safety or strict division.
+      const reduction = floorPence(excess / 2);
+      adjustedPersonalAllowance = Math.max(0, rules.personalAllowance - reduction);
+    }
+    personalAllowanceUsed = Math.min(taxableTradingProfit, adjustedPersonalAllowance);
   }
 
-  const personalAllowanceUsed = Math.min(taxableTradingProfit, adjustedPersonalAllowance);
   // Taxable income is rounded down to the nearest whole pound.
   const rawTaxableIncome = taxableTradingProfit - personalAllowanceUsed;
   const taxableIncome = Math.floor(rawTaxableIncome / 100) * 100;
